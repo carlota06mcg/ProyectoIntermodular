@@ -77,18 +77,18 @@ return SizedBox(
           ),
           elevation: 3,
         ),
-        child: Column( // Cambiado de Row a Column
-          mainAxisAlignment: MainAxisAlignment.center, // Centra verticalmente
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
               icon, 
-              size: 50, // Aumenté un poco el tamaño para que luzca mejor en 164 de alto
+              size: 50, 
               color: Colors.white
             ),
-            const SizedBox(height: 15), // Espacio vertical entre icono y texto
+            const SizedBox(height: 15), 
             Text(
               label,
-              textAlign: TextAlign.center, // Asegura que el texto esté centrado si es largo
+              textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,

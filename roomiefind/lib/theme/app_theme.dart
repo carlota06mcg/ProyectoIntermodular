@@ -9,6 +9,7 @@ final ThemeData myAppTheme = ThemeData(
     ), // Un color oscuro para textos principales o Título
     secondary: const Color(0xFFEFE9E1), // Color beige para fondo
   ),
+
   scaffoldBackgroundColor: const Color(0xFFEFE9E1),
   elevatedButtonTheme: ElevatedButtonThemeData(
     style: ElevatedButton.styleFrom(

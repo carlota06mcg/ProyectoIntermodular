@@ -4,7 +4,9 @@ final ThemeData myAppTheme = ThemeData(
   useMaterial3: true,
   colorScheme: ColorScheme.fromSeed(
     seedColor: const Color(0xFFB82D41),
-    primary: const Color(0xFF14213D), // Un color oscuro para textos principales o Título
+    primary: const Color(
+      0xFF14213D,
+    ), // Un color oscuro para textos principales o Título
     secondary: const Color(0xFFEFE9E1), // Color beige para fondo
   ),
 
@@ -14,9 +16,7 @@ final ThemeData myAppTheme = ThemeData(
       backgroundColor: const Color(0xFFB82D41), // Rojo / Granate
       foregroundColor: Colors.white,
       elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
     ),
   ),
   inputDecorationTheme: InputDecorationTheme(

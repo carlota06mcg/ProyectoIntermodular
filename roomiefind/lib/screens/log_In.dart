@@ -1,6 +1,8 @@
 // Pantalla de Inicio de la Aplicacion Log in.
 import 'package:flutter/material.dart';
 import 'package:roomiefind/widgets/widgets.dart';
+import 'package:roomiefind/screens/sign_up.dart';
+import 'package:roomiefind/screens/role_selection_screen.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -60,9 +62,16 @@ class LoginScreen extends StatelessWidget {
             ),
             const SizedBox(height: 25),
 
-            // Botón (Toma automáticamente el estilo de tu elevatedButtonTheme)
+            // Botón Continuar
             ElevatedButton(
-              onPressed: () {},
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const RoleSelectionScreen(),
+                  ),
+                );
+              },
               child: const Text('Continuar'),
             ),
             
@@ -71,7 +80,12 @@ class LoginScreen extends StatelessWidget {
             const SizedBox(height: 20),
 
             ElevatedButton(
-              onPressed: () {},
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const SignUpScreen()),
+                );
+              },
               child: const Text('Registrarme'),
             ),
             

@@ -167,10 +167,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
             // Botón Registrarme (Toma automáticamente el estilo de elevatedButtonTheme)
             SizedBox(
               width: double.infinity,
-              height: 50,
               child: ElevatedButton(
                 onPressed: () {},
-                // Por defecto el elevado ocupa todo el ancho de este box e implementa los bordes redondeados del theme.
                 child: const Text(
                   'Registrarme',
                   style: TextStyle(fontSize: 16),
@@ -230,7 +228,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   TextSpan(
                     style: TextStyle(color: Colors.black87, fontSize: 14),
                     children: [
-                      TextSpan(text: 'Ya tienes una cuenta ? '),
+                      TextSpan(text: '¿Ya tienes una cuenta? '),
                       TextSpan(
                         text: 'Inicia sesión',
                         style: TextStyle(

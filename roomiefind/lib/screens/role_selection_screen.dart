@@ -16,7 +16,6 @@ class RoleSelectionScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               //Logo
-              Image.asset('assets/images/logo.png', height: 100),
               const SizedBox(height: 20),
               const Text(
                 'RoomieFind',
@@ -26,6 +25,7 @@ class RoleSelectionScreen extends StatelessWidget {
                   color: primaryRed,
                 ),
               ),
+              Image.asset('lib/photos/Logo.png', height: 100),
               const SizedBox(height: 60),
               // Botón Estudiante
               _buildRoleButton(
@@ -65,9 +65,9 @@ class RoleSelectionScreen extends StatelessWidget {
     required Color color,
     required VoidCallback onPressed,
   }) {
-    return SizedBox(
-      width: 280,
-      height: 60,
+return SizedBox(
+      width: 180,
+      height: 164,
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
@@ -77,13 +77,18 @@ class RoleSelectionScreen extends StatelessWidget {
           ),
           elevation: 3,
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Column( // Cambiado de Row a Column
+          mainAxisAlignment: MainAxisAlignment.center, // Centra verticalmente
           children: [
-            Icon(icon, size: 30, color: Colors.white),
-            const SizedBox(width: 10),
+            Icon(
+              icon, 
+              size: 50, // Aumenté un poco el tamaño para que luzca mejor en 164 de alto
+              color: Colors.white
+            ),
+            const SizedBox(height: 15), // Espacio vertical entre icono y texto
             Text(
               label,
+              textAlign: TextAlign.center, // Asegura que el texto esté centrado si es largo
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,

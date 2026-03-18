@@ -1,2 +1,2 @@
-//Todos las pantallas para que solo tengas que exportar un documento
-export 'package:roomiefind/screens/log_In.dart';
+export 'role_selection_screen.dart';
+export 'log_In.dart';

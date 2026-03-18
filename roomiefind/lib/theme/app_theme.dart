@@ -19,4 +19,6 @@ final ThemeData myAppTheme = ThemeData(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
   ),
+  colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+  useMaterial3: true,
 );

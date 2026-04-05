@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'RoomieFind',
       theme: myAppTheme,
-      home: const SignUpScreen(),
+      home: const ChatPlantillaScreen(),
     );
   }
 }

@@ -1,5 +1,18 @@
 import 'package:flutter/material.dart';
-final ThemeData myAppTheme = ThemeData(
-  colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-  useMaterial3: true,
-);
+
+class AppTheme {
+  static const Color primaryRed = Color(0xAE2535);
+  static const Color navBarColor = Color(0xEBDECF);
+
+  static ThemeData get lightTheme {
+    return ThemeData(
+      primaryColor: primaryRed,
+      scaffoldBackgroundColor: Colors.white,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: primaryRed,
+        elevation: 0,
+        centerTitle: true,
+      ),
+    );
+  }
+}

@@ -14,8 +14,9 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'RoomieFind',
-      theme: myAppTheme,
-      home: const RoleSelectionScreen(),
+      theme: AppTheme.lightTheme,
+
+      home: const HistoryFavScreen(),
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'profile.dart';
 
 class RoleSelectionScreen extends StatelessWidget {
   const RoleSelectionScreen({super.key});
@@ -34,7 +35,10 @@ class RoleSelectionScreen extends StatelessWidget {
                 icon: Icons.menu_book_rounded,
                 color: primaryRed,
                 onPressed: () {
-                  print('Navegar a Estudiante');
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => ProfileScreen()),
+                  );
                 },
               ),
 

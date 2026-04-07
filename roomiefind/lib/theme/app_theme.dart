@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 final ThemeData myAppTheme = ThemeData(
   useMaterial3: true,
   colorScheme: ColorScheme.fromSeed(
-    seedColor: const Color(0xFFB82D41),
+    seedColor: const Color(0xFFAE2535),
     primary: const Color(
       0xFF14213D,
     ), // Un color oscuro para textos principales o Título

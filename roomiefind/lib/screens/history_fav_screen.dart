@@ -12,7 +12,7 @@ class _HistoryFavScreenState extends State<HistoryFavScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Determinamos si estamos en Favoritos (índice 4) o Historial (índice 3)
+    // Determinamos si estamos en Favoritos  o Historial
     final bool isFavoriteScreen = _currentIndex == 4;
 
     return Scaffold(
@@ -39,7 +39,7 @@ class _HistoryFavScreenState extends State<HistoryFavScreen> {
       body: ListView(
         padding: const EdgeInsets.only(top: 10),
         children: [
-          // Tarjeta 1 (Aparece en ambas)
+          // Tarjeta 1
           _PropertyCard(
             title: "Student Experience",
             type: "Residencia",
@@ -48,7 +48,7 @@ class _HistoryFavScreenState extends State<HistoryFavScreen> {
             imageUrl:
                 "https://via.placeholder.com/150", // Sustituir por tu imagen
           ),
-          // Tarjeta 2 (Solo aparece en Historial según tu captura)
+          // Tarjeta 2
           if (!isFavoriteScreen)
             const _PropertyCard(
               title: "Residencia Kadora Granada",

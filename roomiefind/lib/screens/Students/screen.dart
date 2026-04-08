@@ -1,7 +1,4 @@
-export 'role_selection_screen.dart';
-export 'log_In.dart';
-export 'sign_up.dart';
+export 'history_fav.dart';
 export 'profile.dart';
-export 'history_fav_screen.dart';
-export 'screen.dart';
+export 'settings.dart';
 

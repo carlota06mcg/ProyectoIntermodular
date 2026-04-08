@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:roomiefind/screens/settings.dart';
+import 'package:roomiefind/screens/Students/settings.dart';
 
 class ProfileScreen extends StatefulWidget {
   @override

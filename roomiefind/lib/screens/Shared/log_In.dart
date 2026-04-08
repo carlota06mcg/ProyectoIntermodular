@@ -1,8 +1,8 @@
 // Pantalla de Inicio de la Aplicacion Log in.
 import 'package:flutter/material.dart';
 import 'package:roomiefind/widgets/widgets.dart';
-import 'package:roomiefind/screens/sign_up.dart';
-import 'package:roomiefind/screens/role_selection_screen.dart';
+import 'screen.dart';
+
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});

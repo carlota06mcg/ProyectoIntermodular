@@ -19,20 +19,16 @@ class ChatPlantillaScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   IconButton(
-                    icon: const Icon(
-                      Icons.arrow_back_ios_new,
-                      color: Colors.black87,
-                      size: 22,
-                    ),
-                    onPressed: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const MenuChatsScreen(),
-                        ),
-                      );
-                    },
+                  icon: const Icon(
+                    Icons.arrow_back_ios_new,
+                    color: Colors.black87,
+                    size: 22,
                   ),
+                  onPressed: () {
+                    // Esto simplemente cierra la pantalla actual y vuelve a la anterior
+                    Navigator.pop(context);
+                  },
+                ),
                   const CircleAvatar(
                     radius: 20,
                     backgroundImage: NetworkImage(

@@ -16,7 +16,8 @@ class _MainWrapperState extends State<MainWrapper> {
   // Lista de tus pantallas reales
   final List<Widget> _pages = [
     MenuChatsScreen(),
-    HistoryFavScreen(),
+    HistoryScreen(),
+    FavoritesScreen(),
     ProfileScreen(),
   ];
 

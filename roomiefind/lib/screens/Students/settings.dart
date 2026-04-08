@@ -5,10 +5,8 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Definimos el color primario del diseño (el rojo/burdeos)
-    const Color primaryColor = Color(0xFFAE2535); 
-    // Un gris para los iconos y textos secundarios
-    const Color secondaryIconColor = Color(0xFFC62828); 
+    const Color primaryColor = Color(0xFFAE2535);
+    const Color secondaryIconColor = Color(0xFFC62828);
     const Color textColor = Colors.black87;
     const Color secondaryTextColor = Colors.black54;
 

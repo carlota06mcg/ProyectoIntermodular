@@ -37,4 +37,5 @@ final ThemeData myAppTheme = ThemeData(
     ),
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
   ),
+  
 );

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+// Importa tu archivo de tema
 import 'package:roomiefind/theme/app_theme.dart';
+// Importa la pantalla que acabamos de crear (y las demás)
 import 'package:roomiefind/screens/screen.dart';
 
 void main() {
@@ -13,6 +15,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Flutter Demo',
       theme: myAppTheme,
       home: const LoginScreen(),

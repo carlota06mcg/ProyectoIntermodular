@@ -1,28 +1,33 @@
 import 'package:flutter/material.dart';
 
 class HistoryFavScreen extends StatefulWidget {
-  const HistoryFavScreen({super.key});
+  // Pasamos el índice como parámetro para que la pantalla sepa qué mostrar
+  final bool showFavorites; 
+
+  const HistoryFavScreen({super.key, this.showFavorites = false});
 
   @override
   State<HistoryFavScreen> createState() => _HistoryFavScreenState();
 }
 
 class _HistoryFavScreenState extends State<HistoryFavScreen> {
-  int _currentIndex = 3; // Por defecto en el icono de Historial
-
   @override
   Widget build(BuildContext context) {
-    // Determinamos si estamos en Favoritos  o Historial
-    final bool isFavoriteScreen = _currentIndex == 4;
+    // Usamos el parámetro pasado para definir el título
+    final String screenTitle = widget.showFavorites ? "Favoritos" : "Historial";
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
         title: Column(
           children: [
             Text(
-              isFavoriteScreen ? "Favoritos" : "Historial",
+              screenTitle,
               style: const TextStyle(
-                color: Color(0xFFB71C1C),
+                color: Color(0xFFAE2535), // Tu rojo RoomieFind
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
               ),
@@ -30,7 +35,7 @@ class _HistoryFavScreenState extends State<HistoryFavScreen> {
             Container(
               height: 2,
               width: 30,
-              color: const Color(0xFFB71C1C),
+              color: const Color(0xFFAE2535),
               margin: const EdgeInsets.only(top: 4),
             ),
           ],
@@ -44,12 +49,11 @@ class _HistoryFavScreenState extends State<HistoryFavScreen> {
             title: "Student Experience",
             type: "Residencia",
             price: "600€",
-            isSelected: isFavoriteScreen, // El borde azul de tu captura
-            imageUrl:
-                "https://via.placeholder.com/150", // Sustituir por tu imagen
+            isSelected: widget.showFavorites, 
+            imageUrl: "https://via.placeholder.com/150", 
           ),
-          // Tarjeta 2
-          if (!isFavoriteScreen)
+          // Tarjeta 2 - Solo se muestra si no es favoritos (ejemplo)
+          if (!widget.showFavorites)
             const _PropertyCard(
               title: "Residencia Kadora Granada",
               type: "Piso compartido",
@@ -59,27 +63,12 @@ class _HistoryFavScreenState extends State<HistoryFavScreen> {
             ),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: const Color(0xFFF0E4D7),
-        selectedItemColor: const Color(0xFFB71C1C),
-        unselectedItemColor: Colors.grey,
-        showSelectedLabels: false,
-        showUnselectedLabels: false,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: ""),
-          BottomNavigationBarItem(icon: Icon(Icons.send_outlined), label: ""),
-          BottomNavigationBarItem(icon: Icon(Icons.search), label: ""),
-          BottomNavigationBarItem(icon: Icon(Icons.history), label: ""),
-          BottomNavigationBarItem(icon: Icon(Icons.favorite_border), label: ""),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: ""),
-        ],
-      ),
+      // ELIMINADO: El bottomNavigationBar ya no está aquí porque lo gestiona MainWrapper
     );
   }
 }
+
+// --- WIDGET DE TARJETA (Mantenemos tu diseño) ---
 
 class _PropertyCard extends StatelessWidget {
   final String title;
@@ -134,7 +123,7 @@ class _PropertyCard extends StatelessWidget {
                         const SizedBox(width: 4),
                         Icon(
                           isSelected ? Icons.favorite : Icons.favorite_border,
-                          color: Colors.red,
+                          color: const Color(0xFFAE2535),
                           size: 18,
                         ),
                       ],
@@ -143,18 +132,11 @@ class _PropertyCard extends StatelessWidget {
                 ),
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                 ),
                 const Text(
                   "4-6 guests · Entire Home · 5 beds · 3 bath\nWifi · Kitchen · Free Parking",
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 10,
-                    height: 1.2,
-                  ),
+                  style: TextStyle(color: Colors.grey, fontSize: 10, height: 1.2),
                 ),
                 const SizedBox(height: 8),
                 Row(
@@ -162,26 +144,14 @@ class _PropertyCard extends StatelessWidget {
                   children: [
                     const Row(
                       children: [
-                        Text(
-                          "5.0",
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        Text("5.0", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                         Icon(Icons.star, color: Colors.orange, size: 12),
-                        Text(
-                          " (1318 reviews)",
-                          style: TextStyle(color: Colors.grey, fontSize: 10),
-                        ),
+                        Text(" (1318 reviews)", style: TextStyle(color: Colors.grey, fontSize: 10)),
                       ],
                     ),
                     Text(
                       "$price /mes",
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                      ),
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                     ),
                   ],
                 ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:roomiefind/screens/mainScreen.dart';
 // Importa tu archivo de tema
 import 'package:roomiefind/theme/app_theme.dart';
 // Importa la pantalla que acabamos de crear (y las demás)
@@ -18,7 +19,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Flutter Demo',
       theme: myAppTheme,
-      home: const LoginScreen(),
+      home: const MainWrapper(),
     );
   }
 }

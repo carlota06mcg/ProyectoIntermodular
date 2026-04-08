@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:roomiefind/screens/settings.dart';
 
 class ProfileScreen extends StatefulWidget {
   @override
@@ -56,7 +57,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           IconButton(
             icon: Icon(Icons.settings_outlined, color: primaryRed),
             onPressed: () {
-              // Acción para ajustes
+              Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => SettingsScreen()),
+                  );
             },
           ),
         ],

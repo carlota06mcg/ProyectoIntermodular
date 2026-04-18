@@ -31,7 +31,7 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
   // --- ESTADOS DE SELECCIÓN ---
   bool get esEdicion => widget.alojamientoAEditar != null;
   
-  bool tieneAutobus = true;
+  bool tieneAutobus = false;
   bool tieneMetro = false;
 
   bool servHabIndiv = true;
@@ -39,9 +39,9 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
   bool servLuz = false;
   bool servWifi = false;
 
-  bool infoMascotas = true;
+  bool infoMascotas = false;
   bool infoFumadores = false;
-  bool infoSoloHyM = true;
+  bool infoSoloHyM = false;
   bool infoCompartido = false;
 
   @override

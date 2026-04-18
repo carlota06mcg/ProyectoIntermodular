@@ -21,6 +21,8 @@ class _MainWrapperState extends State<MainWrapper> {
     FavoritesScreen(),
     ProfileScreen(),
     FormularioAlojamientoScreen(),
+    MisAlojamientosScreen(),
+
   ];
 
   @override

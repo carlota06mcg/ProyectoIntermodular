@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
-import 'Shared/screen.dart';
 import 'package:roomiefind/widgets/widgets.dart';
+import 'Shared/screen.dart';
 import 'Students/screen.dart';
+import 'Owner/screen.dart';
 
 class MainWrapper extends StatefulWidget {
   const MainWrapper({super.key});
@@ -20,6 +20,7 @@ class _MainWrapperState extends State<MainWrapper> {
     HistoryScreen(),
     FavoritesScreen(),
     ProfileScreen(),
+    FormularioAlojamientoScreen(),
   ];
 
   @override

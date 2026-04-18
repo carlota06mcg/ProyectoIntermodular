@@ -5,6 +5,7 @@ class CustomProfileField extends StatelessWidget {
   final TextEditingController controller;
   final IconData? icon;
   final bool isEditing;
+  final bool esPropietario;
   final int maxLines;
 
   const CustomProfileField({
@@ -12,6 +13,7 @@ class CustomProfileField extends StatelessWidget {
     required this.label,
     required this.controller,
     required this.isEditing,
+    required this.esPropietario,
     this.icon,
     this.maxLines = 1,
   });

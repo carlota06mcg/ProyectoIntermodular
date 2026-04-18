@@ -138,6 +138,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // =============================================================
 
             CustomProfileField(
+              esPropietario: false,
               label:"Descripción:",
               controller: descController,
               icon: Icons.description,
@@ -145,18 +146,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
               maxLines: 3,
             ),
             CustomProfileField(
+              esPropietario: false,
               label:"Ubicación:",
               controller: locController,
               icon: Icons.location_on_outlined,
               isEditing: isEditing,
             ),
             CustomProfileField(
+              esPropietario: false,
               label: "Estudios:",
               controller: studiesController,
               icon: Icons.book_outlined,
               isEditing: isEditing,
             ),
             CustomProfileField(
+              esPropietario: false,
               label: "Institución:",
               controller: instController,
               icon: Icons.business_outlined,
@@ -166,6 +170,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // Redes sociales: Solo se muestra si estamos editando o si ya tiene contenido
             if (isEditing || instagramController.text.isNotEmpty)
               CustomProfileField(
+                esPropietario: false,
                 label: "Redes sociales (Instagram):",
                 controller: instagramController,
                 icon: Icons.camera_alt_outlined,

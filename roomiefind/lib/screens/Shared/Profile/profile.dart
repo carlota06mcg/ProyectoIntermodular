@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:roomiefind/screens/Students/settings.dart';
+import 'package:roomiefind/screens/Shared/Profile/settings.dart';
+import 'package:roomiefind/widgets/widgets.dart';
 
 class ProfileScreen extends StatefulWidget {
   @override
@@ -136,40 +137,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // 4. LISTADO DE CAMPOS DE INFORMACIÓN
             // =============================================================
 
-            // Llamamos a la función auxiliar para renderizar cada fila
-            _buildField(
-              "Descripción:",
-              descController,
-              Icons.description,
-              isEditing,
+            CustomProfileField(
+              label:"Descripción:",
+              controller: descController,
+              icon: Icons.description,
+              isEditing: isEditing,
               maxLines: 3,
             ),
-            _buildField(
-              "Ubicación:",
-              locController,
-              Icons.location_on_outlined,
-              isEditing,
+            CustomProfileField(
+              label:"Ubicación:",
+              controller: locController,
+              icon: Icons.location_on_outlined,
+              isEditing: isEditing,
             ),
-            _buildField(
-              "Estudios:",
-              studiesController,
-              Icons.book_outlined,
-              isEditing,
+            CustomProfileField(
+              label: "Estudios:",
+              controller: studiesController,
+              icon: Icons.book_outlined,
+              isEditing: isEditing,
             ),
-            _buildField(
-              "Institución:",
-              instController,
-              Icons.business_outlined,
-              isEditing,
+            CustomProfileField(
+              label: "Institución:",
+              controller: instController,
+              icon: Icons.business_outlined,
+              isEditing: isEditing,
             ),
 
             // Redes sociales: Solo se muestra si estamos editando o si ya tiene contenido
             if (isEditing || instagramController.text.isNotEmpty)
-              _buildField(
-                "Redes sociales (Instagram):",
-                instagramController,
-                Icons.camera_alt_outlined,
-                isEditing,
+              CustomProfileField(
+                label: "Redes sociales (Instagram):",
+                controller: instagramController,
+                icon: Icons.camera_alt_outlined,
+                isEditing: isEditing,
               ),
 
             const SizedBox(height: 30),
@@ -198,76 +198,4 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
   }
-
-  // =============================================================
-  // 5. WIDGET AUXILIAR (BUILDER) - REUTILIZACIÓN DE CÓDIGO
-  // =============================================================
-
-  /// Esta función crea una fila que contiene un icono y, o bien un texto,
-  /// o bien un cuadro de entrada (Input) dependiendo del valor de [editing].
-  Widget _buildField(
-    String label,
-    TextEditingController controller,
-    IconData icon,
-    bool editing, {
-    int maxLines = 1,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // En modo edición, mostramos una etiqueta pequeña arriba del campo
-          if (editing)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 5),
-              child: Text(
-                label,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
-            ),
-
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(icon, color: primaryRed, size: 28),
-              const SizedBox(width: 15),
-              Expanded(
-                child: editing
-                    ? // --- VISTA DE EDICIÓN (Input gris redondeado) ---
-                      Container(
-                        decoration: BoxDecoration(
-                          color: lightGrey,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: TextFormField(
-                          controller: controller,
-                          maxLines: maxLines,
-                          decoration: const InputDecoration(
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.all(10),
-                          ),
-                        ),
-                      )
-                    : // --- VISTA DE LECTURA (Texto normal) ---
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          controller.text,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
   }
-}

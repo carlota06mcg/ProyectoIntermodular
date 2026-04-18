@@ -1,7 +1,7 @@
 // Pantalla de Inicio de la Aplicacion Log in.
 import 'package:flutter/material.dart';
 import 'package:roomiefind/widgets/widgets.dart';
-import 'screen.dart';
+import '../screen.dart';
 
 
 class LoginScreen extends StatelessWidget {

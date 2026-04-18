@@ -3,7 +3,7 @@ class Property {
   final String type;
   final String price;
   final String imageUrl;
-  bool isFavorite; // El booleano que pediste
+  bool isFavorite;
 
   Property({
     required this.title,

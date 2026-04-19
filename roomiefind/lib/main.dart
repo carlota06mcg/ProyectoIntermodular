@@ -3,6 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:roomiefind/theme/app_theme.dart';
 // Importa la pantalla que acabamos de crear (y las demás)
 import 'package:roomiefind/screens/screen.dart';
+//Importa la pantalla de añadir alojamiento
+import 'package:roomiefind/screens/add_accomodation_screen.dart';
+//Importa la pantalla de editar alojamiento
+import 'package:roomiefind/screens/edit_accomodation_screen.dart';
 
 void main() {
   runApp(const MyApp());

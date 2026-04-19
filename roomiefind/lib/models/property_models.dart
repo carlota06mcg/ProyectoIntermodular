@@ -4,6 +4,7 @@ class Property {
   final String price;
   final String imageUrl;
   bool isFavorite;
+ // Se me ha pasdao el valor para que haga la busqueda por google hay que hacer que los nombres esten bien
 
   Property({
     required this.title,

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'Profile/profile.dart';
+import 'package:roomiefind/routes/routes.dart'; 
 
 class RoleSelectionScreen extends StatelessWidget {
   const RoleSelectionScreen({super.key});
@@ -35,11 +35,11 @@ class RoleSelectionScreen extends StatelessWidget {
                 icon: Icons.menu_book_rounded,
                 color: primaryRed,
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => ProfileScreen()),
-                  );
-                },
+                Navigator.pushReplacementNamed(
+                  context, 
+                  AppRoutes.mainMenu, // Esta es la ruta que configuramos en app_routes.dart
+                );
+              },
               ),
 
               const SizedBox(height: 40),
@@ -51,8 +51,11 @@ class RoleSelectionScreen extends StatelessWidget {
                 icon: Icons.home_rounded,
                 color: primaryRed,
                 onPressed: () {
-                  print('Navegar a Propietario');
-                },
+                Navigator.pushReplacementNamed(
+                  context, 
+                  AppRoutes.ownAppart, // Esta cargará el Wrapper con la barra de propietarios
+                );
+              },
               ),
             ],
           ),

@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:roomiefind/screens/mainScreen.dart';
-// Importa tu archivo de tema
+// 1. Importa tu archivo de rutas
+import 'package:roomiefind/routes/routes.dart'; 
 import 'package:roomiefind/theme/app_theme.dart';
-// Importa la pantalla que acabamos de crear (y las demás)
-import 'package:roomiefind/screens/Students/screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -12,15 +10,25 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Flutter Demo',
+      title: 'RoomieFind',
       theme: myAppTheme,
-      home: const MainWrapper(),
+
+      // 2. Definimos que la app inicie en el Login
+      initialRoute: AppRoutes.login,
+
+      // 3. Cargamos el mapa de rutas desde tu archivo externo
+      routes: AppRoutes.getRoutes(),
+      
+      // OPCIONAL: Si quieres que al haber un error de ruta no crashee
+      onUnknownRoute: (settings) => MaterialPageRoute(
+        builder: (context) => const Scaffold(
+          body: Center(child: Text("Ruta no encontrada")),
+        ),
+      ),
     );
   }
 }
-

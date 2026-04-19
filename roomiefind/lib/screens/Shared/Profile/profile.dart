@@ -3,6 +3,7 @@ import 'package:roomiefind/screens/Shared/Profile/settings.dart';
 import 'package:roomiefind/widgets/widgets.dart';
 
 class ProfileScreen extends StatefulWidget {
+  const ProfileScreen({super.key});
   @override
   _ProfileScreenState createState() => _ProfileScreenState();
 }

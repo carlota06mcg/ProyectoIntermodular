@@ -1,6 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:provider/provider.dart';
+import 'package:roomiefind/models/property_models.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+// Importa tus modelos y viewmodels (asegúrate de que las rutas sean correctas)333333
+import '../../viewmodels/property_viewmodel.dart';
+import '../../viewmodels/auth_viewmodel.dart';
 
 class FormularioAlojamientoScreen extends StatefulWidget {
   final Map<String, dynamic>? alojamientoAEditar;
@@ -47,15 +54,11 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
   @override
   void initState() {
     super.initState();
-    // Inicialización de controladores
     _nombreController = TextEditingController(text: esEdicion ? widget.alojamientoAEditar!['nombre'] : '');
     _ubicacionController = TextEditingController(text: esEdicion ? widget.alojamientoAEditar!['ubicacion'] : '');
     _precioController = TextEditingController(text: esEdicion ? widget.alojamientoAEditar!['precio'] : '');
     _descripcionController = TextEditingController(text: esEdicion ? widget.alojamientoAEditar!['descripcion'] : '');
     _fechaController = TextEditingController(text: esEdicion ? widget.alojamientoAEditar!['fecha'] : 'Noviembre / 21 / 1990');
-    
-    // Si quisieras cargar los bools en modo edición, lo harías aquí:
-    // tieneAutobus = widget.alojamientoAEditar?['autobus'] ?? true;
   }
 
   @override
@@ -68,7 +71,6 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
     super.dispose();
   }
 
-  // --- LÓGICA DE FOTOS ---
   Future<void> _seleccionarFotos() async {
     final List<XFile> imagenes = await _picker.pickMultiImage();
     if (imagenes.isNotEmpty) {
@@ -78,47 +80,80 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
     }
   }
 
-  // --- CAPTURA DE TODOS LOS DATOS ---
-  void _procesarFormulario() {
-    final Map<String, dynamic> datosCompletos = {
-      "nombre": _nombreController.text,
-      "ubicacion": _ubicacionController.text,
-      "precio": _precioController.text,
-      "descripcion": _descripcionController.text,
-      "fecha": _fechaController.text,
-      "fotos_rutas": _imagenesSeleccionadas.map((e) => e.path).toList(),
-      "transporte": {
+// --- LÓGICA DE GUARDADO EN SUPABASE ---
+  Future<void> _procesarFormulario() async {
+    final propVM = Provider.of<PropertyViewModel>(context, listen: false);
+
+    // 1. Validar sesión de usuario (Directo desde Supabase para evitar errores de VM)
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Debes estar logueado para publicar")),
+      );
+      return;
+    }
+
+    // 2. Validar campos básicos
+    if (_nombreController.text.isEmpty || _precioController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Por favor, rellena los campos obligatorios")),
+      );
+      return;
+    }
+
+    // 3. Crear el modelo de datos coincidiendo con property_models.dart
+    final nuevaPropiedad = PropertyModel(
+      ownerId: user.id,
+      title: _nombreController.text,
+      type: "Piso de Estudiantes", 
+      location: _ubicacionController.text,
+      price: double.tryParse(_precioController.text) ?? 0.0,
+      description: _descripcionController.text,
+      imageUrls: [], // Se llenará en el servicio tras la subida
+      transport: {
         "autobus": tieneAutobus,
         "metro": tieneMetro,
       },
-      "servicios": {
+      services: {
         "habitacion_individual": servHabIndiv,
         "agua": servAgua,
         "luz": servLuz,
         "wifi": servWifi,
       },
-      "informacion_adicional": {
+      additionalInfo: {
         "mascotas": infoMascotas,
         "fumadores": infoFumadores,
         "solo_hombres_mujeres": infoSoloHyM,
         "compartido": infoCompartido,
       },
-      "modo": esEdicion ? "UPDATE" : "CREATE"
-    };
-
-    print("=== ENVÍO COMPLETO DE DATOS ===");
-    print(datosCompletos);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(esEdicion ? "Guardando cambios..." : "Publicando alojamiento..."),
-        backgroundColor: Colors.green,
-      ),
+      availableDate: DateTime.now(),
     );
+
+    // 5. Llamar al ViewModel
+final exito = await propVM.publishProperty(nuevaPropiedad, _imagenesSeleccionadas);
+    if (exito && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("¡Alojamiento publicado con éxito!"), 
+          backgroundColor: Colors.green
+        ),
+      );
+      Navigator.pop(context);
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(propVM.errorMessage ?? "Error al publicar"), 
+          backgroundColor: Colors.red
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Escuchamos el estado de carga del ViewModel
+    final isLoading = context.watch<PropertyViewModel>().isLoading;
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -134,7 +169,9 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
         ),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
+      body: isLoading 
+        ? const Center(child: CircularProgressIndicator()) // Spinner mientras sube
+        : SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -206,7 +243,7 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
     );
   }
 
-  // --- WIDGETS AUXILIARES ---
+  // --- WIDGETS AUXILIARES (Sin cambios) ---
 
   Widget _buildLabel(String text) {
     return Padding(

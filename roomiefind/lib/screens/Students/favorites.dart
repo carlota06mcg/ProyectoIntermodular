@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-// Importamos el modelo y el widget de la tarjeta
 import 'package:roomiefind/widgets/property_card.dart';
 import 'package:roomiefind/models/property_models.dart';
 
@@ -38,14 +37,21 @@ class FavoritesScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 10),
         children: [
+          // CAMBIO: Ahora usamos PropertyModel con los campos obligatorios que definiste
           PropertyCard(
-            property: Property(
+            property: PropertyModel(
+              ownerId: "mock_id", // ID temporal
               title: "Student Experience",
               type: "Residencia",
-              price: "600€",
-              imageUrl: "https://via.placeholder.com/150",
-              isFavorite: true, // En favoritos, el corazón saldrá relleno
+              location: "Granada, España",
+              price: 600.0, // Ahora es un double, no String con €
+              description: "Residencia universitaria con todos los servicios.",
+              imageUrls: ["https://via.placeholder.com/150"],
+              transport: {},
+              services: {"Wifi": true},
+              additionalInfo: {},
             ),
+            esPropietario: false, // Como es favoritos, el usuario es estudiante
           ),
         ],
       ),

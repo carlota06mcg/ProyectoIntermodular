@@ -1,10 +1,24 @@
 import 'package:flutter/material.dart';
-// Importamos el modelo y el widget de la tarjeta
+import 'package:provider/provider.dart'; // Importante para usar Consumer
 import 'package:roomiefind/widgets/property_card.dart';
 import 'package:roomiefind/models/property_models.dart';
+import 'package:roomiefind/viewmodels/property_viewmodel.dart';
 
-class MainmenuScreen extends StatelessWidget {
+class MainmenuScreen extends StatefulWidget {
   const MainmenuScreen({super.key});
+
+  @override
+  State<MainmenuScreen> createState() => _MainmenuScreenState();
+}
+
+class _MainmenuScreenState extends State<MainmenuScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // 1. Cargamos las propiedades de Supabase al iniciar la pantalla
+    Future.microtask(() =>
+        Provider.of<PropertyViewModel>(context, listen: false).fetchProperties());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,7 +33,7 @@ class MainmenuScreen extends StatelessWidget {
         title: Column(
           children: [
             const Text(
-              "Ubicacion",
+              "Explorar Alojamientos",
               style: TextStyle(
                 color: primaryColor,
                 fontWeight: FontWeight.bold,
@@ -35,14 +49,45 @@ class MainmenuScreen extends StatelessWidget {
           ],
         ),
       ),
-      // 2. USAMOS LISTVIEW.BUILDER PARA RECORRER EL ARRAY
-      body: ListView.builder(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        itemCount: propiedadesPrueba.length, // Cantidad de elementos en el array
-        itemBuilder: (context, index) {
-          return PropertyCard(
-            property: propiedadesPrueba[index], // Pasa el objeto actual del array
-            esPropietario: false, // En historial queremos ver favoritos, no editar
+      // 2. Usamos Consumer para escuchar los cambios en PropertyViewModel
+      body: Consumer<PropertyViewModel>(
+        builder: (context, propVM, child) {
+          // A. Si está cargando datos de Supabase
+          if (propVM.isLoading) {
+            return const Center(
+              child: CircularProgressIndicator(color: primaryColor),
+            );
+          }
+
+          // B. Si hubo un error
+          if (propVM.errorMessage != null) {
+            return Center(
+              child: Text("Error al cargar: ${propVM.errorMessage}"),
+            );
+          }
+
+          // C. Si la lista está vacía
+          if (propVM.properties.isEmpty) {
+            return const Center(
+              child: Text("No hay alojamientos disponibles aún."),
+            );
+          }
+
+          // D. ÉXITO: Mostramos los datos reales
+          return RefreshIndicator(
+            onRefresh: () => propVM.fetchProperties(),
+            color: primaryColor,
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              itemCount: propVM.properties.length,
+              itemBuilder: (context, index) {
+                final propiedad = propVM.properties[index];
+                return PropertyCard(
+                  property: propiedad,
+                  esPropietario: false, // El estudiante no puede editar
+                );
+              },
+            ),
           );
         },
       ),

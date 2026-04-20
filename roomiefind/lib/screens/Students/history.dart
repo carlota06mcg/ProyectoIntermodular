@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-// Importamos el modelo y el widget de la tarjeta
 import 'package:roomiefind/widgets/property_card.dart';
 import 'package:roomiefind/models/property_models.dart';
 
@@ -9,6 +8,34 @@ class HistoryScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const Color primaryColor = Color(0xFFAE2535);
+
+    // 1. LISTA DE PRUEBA TEMPORAL (Para que no de error 'propiedadesPrueba')
+    final List<PropertyModel> misPropiedadesHistorial = [
+      PropertyModel(
+        ownerId: "1",
+        title: "Habitación en Centro Histórico",
+        type: "Piso compartido",
+        location: "Granada, España",
+        price: 350.0,
+        description: "Excelente ubicación cerca de la catedral.",
+        imageUrls: ["https://via.placeholder.com/150"],
+        transport: {"Bus": true},
+        services: {"Wifi": true, "Agua": true},
+        additionalInfo: {"Mascotas": false},
+      ),
+      PropertyModel(
+        ownerId: "2",
+        title: "Estudio Moderno",
+        type: "Estudio",
+        location: "Zaidín, Granada",
+        price: 500.0,
+        description: "Estudio recién reformado.",
+        imageUrls: ["https://via.placeholder.com/150"],
+        transport: {"Metro": true},
+        services: {"Wifi": true},
+        additionalInfo: {},
+      ),
+    ];
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -35,14 +62,13 @@ class HistoryScreen extends StatelessWidget {
           ],
         ),
       ),
-      // 2. USAMOS LISTVIEW.BUILDER PARA RECORRER EL ARRAY
       body: ListView.builder(
         padding: const EdgeInsets.symmetric(vertical: 10),
-        itemCount: propiedadesPrueba.length, // Cantidad de elementos en el array
+        itemCount: misPropiedadesHistorial.length, 
         itemBuilder: (context, index) {
           return PropertyCard(
-            property: propiedadesPrueba[index], // Pasa el objeto actual del array
-            esPropietario: false, // En historial queremos ver favoritos, no editar
+            property: misPropiedadesHistorial[index], 
+            esPropietario: false, 
           );
         },
       ),

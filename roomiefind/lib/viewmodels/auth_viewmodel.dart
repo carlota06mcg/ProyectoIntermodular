@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart'; // Importante para acceder al cliente
 import '../services/auth_service.dart';
-import '../services/user_service.dart';
+import '../services/user_service.dart'; 
 import '../models/user_model.dart';
 
 class AuthViewModel extends ChangeNotifier {
-  // Instanciamos los dos nuevos servicios
   final AuthService _authService = AuthService();
   final UserService _userService = UserService();
 
@@ -13,6 +13,9 @@ class AuthViewModel extends ChangeNotifier {
 
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
+
+  // Acceso directo al cliente de Supabase para evitar errores de "undefined getter"
+  final _supabase = Supabase.instance.client;
 
   // REGISTRO
   Future<bool> register({
@@ -80,7 +83,9 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final user = _authService.supabase.auth.currentUser;
+      // Usamos el acceso directo de la instancia para evitar el error de la captura 6
+      final user = _supabase.auth.currentUser;
+      
       if (user == null) {
         _errorMessage = "No hay sesión activa";
         _isLoading = false;
@@ -88,7 +93,7 @@ class AuthViewModel extends ChangeNotifier {
         return false;
       }
 
-      // Llamamos al UserService
+      // Llamamos al UserService (Asegúrate de que el método reciba String)
       await _userService.updateUserRole(user.id, role.name);
 
       _isLoading = false;

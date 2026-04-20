@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../viewmodels/property_viewmodel.dart';
-import '../../widgets/property_card.dart'; // Asegúrate de la ruta
-import 'createAppartment.dart'; // Importa tu formulario
+import '../../widgets/property_card.dart'; 
+import 'createAppartment.dart'; 
 
 class MisAlojamientosScreen extends StatefulWidget {
   const MisAlojamientosScreen({super.key});
@@ -16,7 +16,11 @@ class _MisAlojamientosScreenState extends State<MisAlojamientosScreen> {
   @override
   void initState() {
     super.initState();
-    // Cargamos las propiedades al iniciar
+    // Ejecutamos la carga inicial
+    _cargarPropiedades();
+  }
+
+  void _cargarPropiedades() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final userId = Supabase.instance.client.auth.currentUser?.id;
       if (userId != null) {
@@ -28,6 +32,7 @@ class _MisAlojamientosScreenState extends State<MisAlojamientosScreen> {
   @override
   Widget build(BuildContext context) {
     const Color customRed = Color(0xFFB02A37);
+    // Usamos select para que solo se reconstruya cuando cambie el estado de carga o la lista
     final propVM = context.watch<PropertyViewModel>();
 
     return Scaffold(
@@ -75,13 +80,14 @@ class _MisAlojamientosScreenState extends State<MisAlojamientosScreen> {
           
           const SizedBox(height: 20),
 
-          // LISTADO REAL O CARGANDO
+          // LISTADO REAL
           Expanded(
             child: propVM.isLoading
                 ? const Center(child: CircularProgressIndicator(color: customRed))
                 : propVM.myProperties.isEmpty
-                    ? const Center(child: Text("Aún no tienes alojamientos publicados."))
+                    ? _buildEmptyState()
                     : RefreshIndicator(
+                        color: customRed,
                         onRefresh: () async {
                           final userId = Supabase.instance.client.auth.currentUser?.id;
                           if (userId != null) await propVM.fetchMyProperties(userId);
@@ -90,14 +96,28 @@ class _MisAlojamientosScreenState extends State<MisAlojamientosScreen> {
                           padding: const EdgeInsets.only(bottom: 20),
                           itemCount: propVM.myProperties.length,
                           itemBuilder: (context, index) {
+                            // IMPORTANTE: Asegúrate de que PropertyCard acepte la navegación
                             return PropertyCard(
                               property: propVM.myProperties[index],
-                              esPropietario: true,
+                              esPropietario: true, 
                             );
                           },
                         ),
                       ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.bed_outlined, size: 60, color: Colors.grey),
+          SizedBox(height: 10),
+          Text("Aún no tienes alojamientos publicados.", style: TextStyle(color: Colors.grey)),
         ],
       ),
     );

@@ -63,4 +63,6 @@ class PropertyModel {
       'available_date': availableDate?.toIso8601String(),
     };
   }
+
+  
 }

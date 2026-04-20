@@ -5,6 +5,8 @@ import '../services/user_service.dart';
 import '../models/user_model.dart';
 
 class AuthViewModel extends ChangeNotifier {
+  UserModel? _currentUser;
+  UserModel? get currentUser => _currentUser;
   final AuthService _authService = AuthService();
   final UserService _userService = UserService();
 
@@ -106,4 +108,29 @@ class AuthViewModel extends ChangeNotifier {
       return false;
     }
   }
+  
+  // ... dentro de tu clase AuthViewModel ...
+
+Future<void> refreshUserProfile() async {
+  if (_currentUser == null) return;
+  
+  final userData = await _userService.getUserProfile(_currentUser!.id);
+  if (userData != null) {
+    _currentUser = UserModel.fromJson(userData);
+    notifyListeners(); // Esto hace que la pantalla se actualice sola
+  }
+}
+
+Future<void> updateProfile(UserModel updatedUser) async {
+  try {
+    // Usamos el nuevo método del servicio enviando el JSON del modelo
+    await _userService.updateUserProfile(updatedUser.id, updatedUser.toJson());
+    _currentUser = updatedUser;
+    notifyListeners();
+  } catch (e) {
+    print("Error actualizando perfil en VM: $e");
+    rethrow;
+  }
+}
+
 }

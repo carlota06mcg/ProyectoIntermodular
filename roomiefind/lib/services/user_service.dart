@@ -3,21 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class UserService {
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  // Actualizar el rol (estudiante/propietario)
-  Future<void> updateUserRole(String userId, String role) async {
-    try {
-      await _supabase
-          .from('profiles')
-          .update({'role': role})
-          .eq('id', userId);
-    } catch (e) {
-      // Esto te ayudará a ver en la consola si el error es de permisos o de nombre de columna
-      print("Error en UserService.updateUserRole: $e");
-      rethrow; // Re-lanzamos el error para que el ViewModel lo capture y muestre el mensaje
-    }
-  }
-
-  // Obtener datos del perfil (Útil para mostrar el nombre en el menú)
+  // Obtener datos del perfil (Actualizado para devolver el mapa de Supabase)
   Future<Map<String, dynamic>?> getUserProfile(String userId) async {
     try {
       final data = await _supabase
@@ -29,6 +15,32 @@ class UserService {
     } catch (e) {
       print("Error al obtener perfil: $e");
       return null;
+    }
+  }
+
+  // Actualizar el perfil COMPLETO (Lo que usaremos en la pantalla Profile)
+  Future<void> updateUserProfile(String userId, Map<String, dynamic> userData) async {
+    try {
+      await _supabase
+          .from('profiles')
+          .update(userData)
+          .eq('id', userId);
+    } catch (e) {
+      print("Error en UserService.updateUserProfile: $e");
+      rethrow;
+    }
+  }
+
+  // Actualizar solo el rol (El que ya tenías)
+  Future<void> updateUserRole(String userId, String role) async {
+    try {
+      await _supabase
+          .from('profiles')
+          .update({'role': role})
+          .eq('id', userId);
+    } catch (e) {
+      print("Error en UserService.updateUserRole: $e");
+      rethrow;
     }
   }
 }

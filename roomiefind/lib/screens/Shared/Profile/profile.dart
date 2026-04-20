@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:roomiefind/screens/Shared/Profile/settings.dart';
-import 'package:roomiefind/widgets/widgets.dart';
+import 'package:provider/provider.dart';
+import '../../../models/user_model.dart';
+import '../../../viewmodels/auth_viewmodel.dart';
+import '../../../viewmodels/property_viewmodel.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -9,199 +11,168 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // =============================================================
-  // 1. ESTADO Y CONTROLADORES
-  // =============================================================
-
-  // 'isEditing' determina si mostramos el perfil o el formulario de edición
   bool isEditing = false;
+  final Color primaryRed = const Color(0xFFAE2535);
 
-  // Los controladores capturan y mantienen el texto escrito en los campos
-  final TextEditingController nameController = TextEditingController(
-    text: "Carlota Maroto",
-  );
-  final TextEditingController descController = TextEditingController(
-    text: "Estudiante de Informática en Granada! <3",
-  );
-  final TextEditingController locController = TextEditingController(
-    text: "Granada, España",
-  );
-  final TextEditingController studiesController = TextEditingController(
-    text: "Desarrollo de Aplicaciones Multiplataforma (CFGS)",
-  );
-  final TextEditingController instController = TextEditingController(
-    text: "Davante Medac Nevada",
-  );
-  final TextEditingController instagramController = TextEditingController(
-    text: "",
-  );
+  // Controladores
+  late TextEditingController nameController;
+  late TextEditingController descController;
+  late TextEditingController locController;
+  late TextEditingController studiesController;
+  late TextEditingController instController;
 
-  // Definición de colores para mantener la coherencia visual (Paleta de la imagen)
-  final Color primaryRed = const Color(0xFFAE2535); // Granate principal
-  final Color lightGrey = const Color(
-    0xFFE0E0E0,
-  ); // Gris para los fondos de los inputs
+  @override
+  void initState() {
+    super.initState();
+    final user = Provider.of<AuthViewModel>(context, listen: false).currentUser;
+    
+    // Rellenamos los controladores con los datos REALES del usuario
+    nameController = TextEditingController(text: user?.fullName ?? "");
+    descController = TextEditingController(text: user?.description ?? "");
+    locController = TextEditingController(text: user?.location ?? "");
+    studiesController = TextEditingController(text: user?.studies ?? "");
+    instController = TextEditingController(text: user?.institution ?? "");
+
+    if (user?.role == UserRole.propietario) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Provider.of<PropertyViewModel>(context, listen: false).fetchMyProperties(user!.id);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final authVM = context.watch<AuthViewModel>();
+    final user = authVM.currentUser;
+
+    if (user == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+
     return Scaffold(
       backgroundColor: Colors.white,
-      // AppBar: Cambia dinámicamente el título según si estamos editando o no
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         title: Text(
-          isEditing ? "Edición | Perfil" : "Mi Perfil - Estudiante",
+          isEditing ? "Edición | Perfil" : "Mi Perfil - ${user.role == UserRole.estudiante ? 'Estudiante' : 'Propietario'}",
           style: TextStyle(color: primaryRed, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.settings_outlined, color: primaryRed),
-            onPressed: () {
-              Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => SettingsScreen()),
-                  );
-            },
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 30),
         child: Column(
           children: [
             const SizedBox(height: 20),
-
-            // =============================================================
-            // 2. SECCIÓN FOTO DE PERFIL (AVATAR)
-            // =============================================================
-            Stack(
-              alignment: Alignment.bottomRight,
-              children: [
-                CircleAvatar(
-                  radius: 60,
-                  backgroundColor: Colors.grey[300],
-                  child: Icon(Icons.person, size: 80, color: Colors.grey[600]),
-                ),
-                // Botón circular de la cámara encima de la foto
-                GestureDetector(
-                  onTap: () => print("Abrir cámara/galería"),
-                  child: CircleAvatar(
-                    radius: 18,
-                    backgroundColor: primaryRed,
-                    child: const Icon(
-                      Icons.camera_alt,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+            _buildAvatar(user),
             const SizedBox(height: 15),
-
-            // Nombre de usuario (Texto estático)
-            Text(
-              nameController.text,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: primaryRed,
-              ),
-            ),
+            Text(user.fullName, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: primaryRed)),
             const SizedBox(height: 10),
-
-            // =============================================================
-            // 3. BOTÓN DE ACCIÓN PRINCIPAL (EDITAR / CONFIRMAR)
-            // =============================================================
-
-            // Si NO estamos editando, muestra el botón para entrar al modo edición
-            if (!isEditing)
+            
+            if (!isEditing) 
               ElevatedButton(
                 onPressed: () => setState(() => isEditing = true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryRed,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: const Text(
-                  "Editar Perfil",
-                  style: TextStyle(color: Colors.white),
-                ),
+                style: ElevatedButton.styleFrom(backgroundColor: primaryRed),
+                child: const Text("Editar Perfil", style: TextStyle(color: Colors.white)),
               ),
 
             const SizedBox(height: 20),
+            CustomProfileField(label: "Descripción:", controller: descController, icon: Icons.description, isEditing: isEditing, maxLines: 3),
+            CustomProfileField(label: "Ubicación:", controller: locController, icon: Icons.location_on_outlined, isEditing: isEditing),
 
-            // =============================================================
-            // 4. LISTADO DE CAMPOS DE INFORMACIÓN
-            // =============================================================
-
-            CustomProfileField(
-              esPropietario: false,
-              label:"Descripción:",
-              controller: descController,
-              icon: Icons.description,
-              isEditing: isEditing,
-              maxLines: 3,
-            ),
-            CustomProfileField(
-              esPropietario: false,
-              label:"Ubicación:",
-              controller: locController,
-              icon: Icons.location_on_outlined,
-              isEditing: isEditing,
-            ),
-            CustomProfileField(
-              esPropietario: false,
-              label: "Estudios:",
-              controller: studiesController,
-              icon: Icons.book_outlined,
-              isEditing: isEditing,
-            ),
-            CustomProfileField(
-              esPropietario: false,
-              label: "Institución:",
-              controller: instController,
-              icon: Icons.business_outlined,
-              isEditing: isEditing,
-            ),
-
-            // Redes sociales: Solo se muestra si estamos editando o si ya tiene contenido
-            if (isEditing || instagramController.text.isNotEmpty)
-              CustomProfileField(
-                esPropietario: false,
-                label: "Redes sociales (Instagram):",
-                controller: instagramController,
-                icon: Icons.camera_alt_outlined,
-                isEditing: isEditing,
-              ),
+            // Mostramos campos según el ROL REAL del usuario
+            if (user.role == UserRole.estudiante) ...[
+              CustomProfileField(label: "Estudios:", controller: studiesController, icon: Icons.book_outlined, isEditing: isEditing),
+              CustomProfileField(label: "Institución:", controller: instController, icon: Icons.business_outlined, isEditing: isEditing),
+            ] else ...[
+              _buildOwnerPropertiesList(), // Lista de pisos para Bea
+            ],
 
             const SizedBox(height: 30),
-
-            // Botón de Confirmar: Solo aparece cuando 'isEditing' es true
-            if (isEditing)
-              SizedBox(
-                width: 120,
-                child: ElevatedButton(
-                  onPressed: () => setState(() => isEditing = false),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryRed,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(25),
-                    ),
-                  ),
-                  child: const Text(
-                    "Confirmar",
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
+            if (isEditing) 
+              ElevatedButton(
+                onPressed: () async {
+                  final updatedUser = UserModel(
+                    id: user.id,
+                    email: user.email,
+                    fullName: nameController.text,
+                    description: descController.text,
+                    location: locController.text,
+                    studies: studiesController.text,
+                    institution: instController.text,
+                    role: user.role,
+                  );
+                  
+                  await authVM.updateProfile(updatedUser);
+                  setState(() => isEditing = false);
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: primaryRed, minimumSize: const Size(150, 45)),
+                child: const Text("Confirmar", style: TextStyle(color: Colors.white)),
               ),
-            const SizedBox(height: 20),
           ],
         ),
       ),
     );
   }
+
+  // --- Widgets de apoyo ---
+  Widget _buildAvatar(UserModel user) {
+    return CircleAvatar(
+      radius: 60,
+      backgroundColor: Colors.grey[200],
+      child: const Icon(Icons.person, size: 80, color: Colors.grey),
+    );
   }
+
+  Widget _buildOwnerPropertiesList() {
+    final propVM = context.watch<PropertyViewModel>();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("Mis Propiedades:", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black54)),
+        const SizedBox(height: 10),
+        ...propVM.myProperties.map((p) => Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(10)),
+          child: Text(p.title), // Muestra el título del piso (ej: Apartamento Prueba1)
+        )).toList(),
+      ],
+    );
+  }
+}
+
+// El widget de campo personalizado
+class CustomProfileField extends StatelessWidget {
+  final String label;
+  final TextEditingController controller;
+  final IconData icon;
+  final bool isEditing;
+  final int maxLines;
+
+  const CustomProfileField({super.key, required this.label, required this.controller, required this.icon, required this.isEditing, this.maxLines = 1});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 15),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [Icon(icon, size: 18, color: const Color(0xFFAE2535)), const SizedBox(width: 8), Text(label, style: const TextStyle(fontWeight: FontWeight.bold))]),
+          const SizedBox(height: 8),
+          TextField(
+            controller: controller,
+            enabled: isEditing,
+            maxLines: maxLines,
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: isEditing ? Colors.white : Colors.grey[50],
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: isEditing ? const BorderSide(color: Color(0xFFAE2535)) : BorderSide.none),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

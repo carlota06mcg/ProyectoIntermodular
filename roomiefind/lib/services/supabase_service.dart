@@ -1,4 +1,4 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+/*import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseService {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -55,4 +55,4 @@ Future<bool> usernameExists(String username) async {
   return res != null; // Si res no es nulo, es que ya existe
 }
 
-}
+}*/

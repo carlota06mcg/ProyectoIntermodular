@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:roomiefind/widgets/widgets.dart';
 import 'package:roomiefind/viewmodels/auth_viewmodel.dart';
 import 'sign_up.dart';
-import 'role_selection.dart'; // Asegúrate de que este nombre coincida con tu archivo
+import 'role_selection.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});

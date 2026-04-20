@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:roomiefind/widgets/widgets.dart';
+
+// Importamos el ViewModel y las rutas para que la navegación sea profesional
 import 'package:roomiefind/viewmodels/auth_viewmodel.dart';
-import 'sign_up.dart';
-import 'role_selection.dart';
+import 'package:roomiefind/routes/routes.dart'; 
+
+// Nota: Ya no necesitamos importar sign_up.dart o role_selection.dart 
+// directamente porque usaremos AppRoutes
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,7 +17,6 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // 1. Controladores para capturar el texto
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passController = TextEditingController();
 
@@ -26,19 +29,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Accedemos a los colores del tema y al ViewModel (el motor)
     final colors = Theme.of(context).colorScheme;
     final authViewModel = Provider.of<AuthViewModel>(context);
 
     return Scaffold(
-      backgroundColor: colors.secondary, // Beige del tema
+      backgroundColor: colors.secondary, 
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 40.0),
         child: Column(
           children: [
             const SizedBox(height: 80),
-            
-            // Título
             Text(
               'RoomieFind',
               style: TextStyle(
@@ -48,13 +48,10 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
             const SizedBox(height: 20),
-
-            // Logo
             Image.asset(
               'lib/photos/Logo.png', 
               height: 180,
             ),
-            
             const SizedBox(height: 30),
             const Text(
               'Iniciar Sesión',
@@ -68,7 +65,6 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 30),
 
-            // Inputs con sus controladores
             TextField(
               controller: _emailController,
               keyboardType: TextInputType.emailAddress,
@@ -82,14 +78,13 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             const SizedBox(height: 25),
 
-            // Botón Continuar (Login Real)
+            // Botón Continuar (Login con Rutas)
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: authViewModel.isLoading 
                   ? null 
                   : () async {
-                      // Validar campos vacíos
                       if (_emailController.text.isEmpty || _passController.text.isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Por favor, rellena todos los campos')),
@@ -97,7 +92,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         return;
                       }
 
-                      // Llamada al ViewModel
                       final success = await authViewModel.login(
                         email: _emailController.text.trim(),
                         password: _passController.text.trim(),
@@ -105,10 +99,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
                       if (success) {
                         if (mounted) {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(builder: (context) => const RoleSelectionScreen()),
-                          );
+                          // USAMOS LA RUTA NOMBRADA
+                          Navigator.pushReplacementNamed(context, AppRoutes.roleSelection);
                         }
                       } else {
                         if (mounted) {
@@ -135,26 +127,20 @@ class _LoginScreenState extends State<LoginScreen> {
             const DividerOr(), 
             const SizedBox(height: 20),
 
-            // Botón Ir a Registro
+            // Botón Registrarme con Rutas
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const SignUpScreen()),
-                  );
+                  Navigator.pushNamed(context, AppRoutes.signUp);
                 },
                 child: const Text('Registrarme'),
               ),
             ),
             
             const SizedBox(height: 15),
-            
-            // Botones sociales
             const SocialButton(text: "Continuar con Google", icon: Icons.g_mobiledata),
             const SocialButton(text: "Continuar con Apple", icon: Icons.apple),
-            
             const SizedBox(height: 40),
             const Footerlogin(),
           ],

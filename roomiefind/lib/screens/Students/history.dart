@@ -8,7 +8,6 @@ class HistoryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Definimos el color rojo de tu tema
     const Color primaryColor = Color(0xFFAE2535);
 
     return Scaffold(
@@ -36,28 +35,16 @@ class HistoryScreen extends StatelessWidget {
           ],
         ),
       ),
-      body: ListView(
+      // 2. USAMOS LISTVIEW.BUILDER PARA RECORRER EL ARRAY
+      body: ListView.builder(
         padding: const EdgeInsets.symmetric(vertical: 10),
-        children: [
-          PropertyCard(
-            property: Property(
-              title: "Student Experience",
-              type: "Residencia",
-              price: "600€",
-              imageUrl: "https://via.placeholder.com/150",
-              isFavorite: false, // En historial no tiene por qué ser favorito
-            ),
-          ),
-          PropertyCard(
-            property: Property(
-              title: "Residencia Kadora Granada",
-              type: "Piso compartido",
-              price: "350€",
-              imageUrl: "https://via.placeholder.com/150",
-              isFavorite: false,
-            ),
-          ),
-        ],
+        itemCount: propiedadesPrueba.length, // Cantidad de elementos en el array
+        itemBuilder: (context, index) {
+          return PropertyCard(
+            property: propiedadesPrueba[index], // Pasa el objeto actual del array
+            esPropietario: false, // En historial queremos ver favoritos, no editar
+          );
+        },
       ),
     );
   }

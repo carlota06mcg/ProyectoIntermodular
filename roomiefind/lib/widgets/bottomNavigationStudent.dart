@@ -25,7 +25,7 @@ class CustomBottomNavBar extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _buildNavItem(Icons.home_outlined, 0),
-          _buildNavItem(Icons.send_outlined, 1), // Parecido al icono de avioncito
+          _buildNavItem(Icons.send_outlined, 1),
           _buildNavItem(Icons.search, 2),
           _buildNavItem(Icons.history, 3),
           _buildNavItem(Icons.favorite_border, 4),

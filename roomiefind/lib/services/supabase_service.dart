@@ -2,6 +2,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupabaseService {
   final SupabaseClient _supabase = Supabase.instance.client;
+  // Dentro de la clase SupabaseService
+  SupabaseClient get supabase => Supabase.instance.client;
 
   // FUNCION: Registro de usuario, la llamaremos desde el viewmodel
   Future<AuthResponse> signUp({

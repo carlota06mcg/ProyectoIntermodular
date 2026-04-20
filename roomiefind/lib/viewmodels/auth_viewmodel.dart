@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
-import '../services/supabase_service.dart';
+import '../services/auth_service.dart';
+import '../services/user_service.dart';
+import '../models/user_model.dart';
 
 class AuthViewModel extends ChangeNotifier {
-  final SupabaseService _supabaseService = SupabaseService();
+  // Instanciamos los dos nuevos servicios
+  final AuthService _authService = AuthService();
+  final UserService _userService = UserService();
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
@@ -10,76 +14,88 @@ class AuthViewModel extends ChangeNotifier {
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
-  // FUNCION: Registro de usuario, la llamaremos desde el viewmodel
- // En lib/viewmodels/auth_viewmodel.dart
-
-Future<bool> register({
-  required String email,
-  required String password,
-  required String fullName,
-  required String username,
-}) async {
-  _isLoading = true;
-  _errorMessage = null;
-  notifyListeners();
-
-  try {
-    // 1. Validar si el nombre de usuario ya está pillado
-    final existeUsuario = await _supabaseService.usernameExists(username);
-    if (existeUsuario) {
-      _errorMessage = "El nombre de usuario ya está en uso";
-      _isLoading = false;
-      notifyListeners();
-      return false;
-    }
-
-    // 2. Intentar el registro normal
-    await _supabaseService.signUp(
-      email: email,
-      password: password,
-      fullName: fullName,
-      username: username,
-    );
-
-    _isLoading = false;
-    notifyListeners();
-    return true;
-
-  } catch (e) {
-    // 3. Capturar errores específicos de Supabase (como correo duplicado)
-    String errorRaw = e.toString().toLowerCase();
-    
-    if (errorRaw.contains("user already exists") || errorRaw.contains("already registered")) {
-      _errorMessage = "Este correo electrónico ya está en uso";
-    } else {
-      _errorMessage = "Error: Correo o contraseña inválidos";
-    }
-
-    _isLoading = false;
-    notifyListeners();
-    return false;
-  }
-}
-
-  // FUNCION: para iniciar sesión, la llamaremos desde el botón de login
-  Future<bool> login({
+  // REGISTRO
+  Future<bool> register({
     required String email,
     required String password,
+    required String fullName,
+    required String username,
   }) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      await _supabaseService.signIn(
+      final existeUsuario = await _authService.usernameExists(username);
+      if (existeUsuario) {
+        _errorMessage = "El nombre de usuario ya está en uso";
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      await _authService.signUp(
         email: email,
         password: password,
+        fullName: fullName,
+        username: username,
       );
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString().contains("already registered") 
+          ? "Este correo ya está en uso" 
+          : "Error en el registro";
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // LOGIN
+  Future<bool> login({required String email, required String password}) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _authService.signIn(email: email, password: password);
       _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
       _errorMessage = "Email o contraseña incorrectos";
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  // ACTUALIZAR ROL
+  Future<bool> updateUserRole(UserRole role) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final user = _authService.supabase.auth.currentUser;
+      if (user == null) {
+        _errorMessage = "No hay sesión activa";
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      // Llamamos al UserService
+      await _userService.updateUserRole(user.id, role.name);
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = "Error al guardar el rol: $e";
       _isLoading = false;
       notifyListeners();
       return false;

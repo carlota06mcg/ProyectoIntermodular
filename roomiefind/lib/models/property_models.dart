@@ -1,43 +1,66 @@
-class Property {
+class PropertyModel {
+  final String? id;
+  final String ownerId;
   final String title;
   final String type;
-  final String price;
-  final String imageUrl;
-  bool isFavorite;
- // Se me ha pasdao el valor para que haga la busqueda por google hay que hacer que los nombres esten bien
+  final String location;
+  final double price;
+  final String description;
+  final List<String> imageUrls;
+  final Map<String, bool> transport;
+  final Map<String, bool> services;
+  final Map<String, bool> additionalInfo;
+  final DateTime? availableDate;
 
-  Property({
+  PropertyModel({
+    this.id,
+    required this.ownerId,
     required this.title,
     required this.type,
+    required this.location,
     required this.price,
-    required this.imageUrl,
-    this.isFavorite = false,
+    required this.description,
+    this.imageUrls = const [],
+    required this.transport,
+    required this.services,
+    required this.additionalInfo,
+    this.availableDate,
   });
-  // Lista de ejemplo para probar la UI
+
+  // De JSON (Supabase) a Objeto Dart
+  factory PropertyModel.fromJson(Map<String, dynamic> json) {
+    return PropertyModel(
+      id: json['id'],
+      ownerId: json['owner_id'],
+      title: json['title'],
+      type: json['type'],
+      location: json['location'],
+      price: (json['price'] as num).toDouble(),
+      description: json['description'],
+      imageUrls: List<String>.from(json['images'] ?? []),
+      transport: Map<String, bool>.from(json['transport'] ?? {}),
+      services: Map<String, bool>.from(json['services'] ?? {}),
+      additionalInfo: Map<String, bool>.from(json['additional_info'] ?? {}),
+      availableDate: json['available_date'] != null 
+          ? DateTime.parse(json['available_date']) 
+          : null,
+    );
+  }
+
+  // De Objeto Dart a JSON (para guardar en Supabase)
+  Map<String, dynamic> toJson() {
+    return {
+      'owner_id': ownerId,
+      'title': title,
+      'type': type,
+      'location': location,
+      'price': price,
+      'description': description,
+      'images': imageUrls,
+      'transport': transport,
+      'services': services,
+      'additional_info': additionalInfo,
+      'available_date': availableDate?.toIso8601String(),
+    };
+  }
 }
-final List<Property> propiedadesPrueba = [
-  Property(
-    
-    title: 'Alquiler de estudio en Calle Almona de San Juan de Dios',
-    type: 'Piso de Estudiantes',
-    price: '470',
-    imageUrl: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=1000&auto=format&fit=crop',
-    isFavorite: true,
-  ),
-  Property(
-    
-    title: 'Habitación luminosa cerca de la Facultad de Ciencias',
-    type: 'Habitación',
-    price: '320',
-    imageUrl: 'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?q=80&w=1000&auto=format&fit=crop',
-    isFavorite: false,
-  ),
-  Property(
-    
-    title: 'Apartamento moderno en el centro histórico',
-    type: 'Apartamento Entero',
-    price: '850',
-    imageUrl: 'https://images.unsplash.com/photo-1493809842364-78817add7ffb?q=80&w=1000&auto=format&fit=crop',
-    isFavorite: true,
-  ),
-];

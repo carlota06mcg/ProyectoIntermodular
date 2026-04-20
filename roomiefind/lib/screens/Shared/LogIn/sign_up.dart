@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:roomiefind/viewmodels/auth_viewmodel.dart';
-import 'role_selection.dart'; 
+// Importamos las rutas en lugar del archivo directo
+import 'package:roomiefind/routes/routes.dart'; 
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -12,9 +13,9 @@ class SignUpScreen extends StatefulWidget {
 
 class _SignUpScreenState extends State<SignUpScreen> {
   bool _acceptedTerms = false;
-  final _formKey = GlobalKey<FormState>(); // Para validar todo el formulario a la vez
+  final _formKey = GlobalKey<FormState>(); 
 
-  // 1. Controladores para todos los campos
+  // Controladores
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _userController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -40,18 +41,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     return Scaffold(
       backgroundColor: colors.secondary,
-      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
+      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0, iconTheme: IconThemeData(color: colors.primary)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 30.0),
-        child: Form( // Envolvemos todo en un Form
+        child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Registra tu cuenta', style: TextStyle(color: colors.primary, fontSize: 26, fontWeight: FontWeight.bold)),
+              Text('Registra tu cuenta', 
+                style: TextStyle(color: colors.primary, fontSize: 26, fontWeight: FontWeight.bold)),
               const SizedBox(height: 30),
 
-              // Nombre y Apellidos
               _buildLabel('Nombre y Apellidos'),
               TextFormField(
                 controller: _nameController,
@@ -60,7 +61,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
               const SizedBox(height: 15),
 
-              // Nombre de Usuario
               _buildLabel('Nombre de Usuario'),
               TextFormField(
                 controller: _userController,
@@ -69,7 +69,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
               const SizedBox(height: 15),
 
-              // Correo
               _buildLabel('Correo electrónico'),
               TextFormField(
                 controller: _emailController,
@@ -79,7 +78,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
               const SizedBox(height: 15),
 
-              // Confirmar Correo
               _buildLabel('Confirmar correo'),
               TextFormField(
                 controller: _confirmEmailController,
@@ -88,7 +86,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
               const SizedBox(height: 15),
 
-              // Contraseña
               _buildLabel('Contraseña'),
               TextFormField(
                 controller: _passController,
@@ -98,7 +95,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
               const SizedBox(height: 15),
 
-              // Confirmar Contraseña
               _buildLabel('Confirmar contraseña'),
               TextFormField(
                 controller: _confirmPassController,
@@ -108,26 +104,24 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
               const SizedBox(height: 25),
 
-              // Checkbox Términos
               Row(
                 children: [
                   Checkbox(
+                    activeColor: colors.primary,
                     value: _acceptedTerms,
                     onChanged: (v) => setState(() => _acceptedTerms = v!),
                   ),
-                  const Expanded(child: Text("Acepto términos y condiciones")),
+                  const Expanded(child: Text("Al hacer clic en continuar, aceptas nuestros Términos de Servicio y nuestra Política de Privacidad", style: TextStyle(fontSize: 12))),
                 ],
               ),
               const SizedBox(height: 30),
 
-              // Botón Registrarme
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: (authViewModel.isLoading || !_acceptedTerms)
                       ? null
                       : () async {
-                          // 2. Ejecutar validaciones locales antes de ir a Supabase
                           if (_formKey.currentState!.validate()) {
                             final success = await authViewModel.register(
                               email: _emailController.text.trim(),
@@ -137,8 +131,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             );
 
                             if (success && mounted) {
-                              Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const RoleSelectionScreen()));
-                            } else if (!success) {
+                              // NAVEGACIÓN POR RUTA NOMBRADA
+                              Navigator.pushReplacementNamed(context, AppRoutes.roleSelection);
+                            } else if (!success && mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: Text(authViewModel.errorMessage ?? 'Error'),
@@ -149,7 +144,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
                           }
                         },
                   child: authViewModel.isLoading
-                      ? const CircularProgressIndicator(color: Colors.white)
+                      ? const SizedBox(
+                          height: 20, 
+                          width: 20, 
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                        )
                       : const Text('Registrarme'),
                 ),
               ),

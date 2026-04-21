@@ -96,10 +96,13 @@ class _LoginScreenState extends State<LoginScreen> {
                         email: _emailController.text.trim(),
                         password: _passController.text.trim(),
                       );
+                      await authViewModel.loadCurrentUser();
 
                       if (success) {
+                        // Cargar el perfil del usuario ANTES de navegar
+                        await authViewModel.loadCurrentUser();
+
                         if (mounted) {
-                          // USAMOS LA RUTA NOMBRADA
                           Navigator.pushReplacementNamed(context, AppRoutes.roleSelection);
                         }
                       } else {

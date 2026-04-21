@@ -14,165 +14,262 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool isEditing = false;
   final Color primaryRed = const Color(0xFFAE2535);
 
-  // Controladores
-  late TextEditingController nameController;
   late TextEditingController descController;
   late TextEditingController locController;
-  late TextEditingController studiesController;
-  late TextEditingController instController;
 
   @override
   void initState() {
     super.initState();
-    final user = Provider.of<AuthViewModel>(context, listen: false).currentUser;
+    // LEEMOS LOS DATOS DEL USUARIO REAL INSTANTÁNEAMENTE
+    final user = context.read<AuthViewModel>().currentUser;
     
-    // Rellenamos los controladores con los datos REALES del usuario
-    nameController = TextEditingController(text: user?.fullName ?? "");
     descController = TextEditingController(text: user?.description ?? "");
     locController = TextEditingController(text: user?.location ?? "");
-    studiesController = TextEditingController(text: user?.studies ?? "");
-    instController = TextEditingController(text: user?.institution ?? "");
 
+    // SI ES PROPIETARIO, BUSCAMOS SUS PISOS
     if (user?.role == UserRole.propietario) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        Provider.of<PropertyViewModel>(context, listen: false).fetchMyProperties(user!.id);
+        context.read<PropertyViewModel>().fetchMyProperties(user!.id);
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final authVM = context.watch<AuthViewModel>();
-    final user = authVM.currentUser;
+    final user = context.watch<AuthViewModel>().currentUser;
 
-    if (user == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (user == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: Text(
-          isEditing ? "Edición | Perfil" : "Mi Perfil - ${user.role == UserRole.estudiante ? 'Estudiante' : 'Propietario'}",
-          style: TextStyle(color: primaryRed, fontWeight: FontWeight.bold),
+        title: Column(
+          children: [
+            Text(
+              isEditing ? "Edición | Perfil" : "Mi Perfil - Propietario",
+              style: TextStyle(color: primaryRed, fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            Container(height: 2, width: 30, color: primaryRed, margin: const EdgeInsets.only(top: 4)),
+          ],
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.settings_outlined, color: primaryRed, size: 28),
+            onPressed: () {}, // Aquí navegas a Settings
+          ),
+        ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 30),
+        padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 10),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const SizedBox(height: 20),
             _buildAvatar(user),
             const SizedBox(height: 15),
-            Text(user.fullName, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: primaryRed)),
-            const SizedBox(height: 10),
             
-            if (!isEditing) 
-              ElevatedButton(
-                onPressed: () => setState(() => isEditing = true),
-                style: ElevatedButton.styleFrom(backgroundColor: primaryRed),
-                child: const Text("Editar Perfil", style: TextStyle(color: Colors.white)),
-              ),
+            // NOMBRE Y USERNAME
+            Text(user.fullName, style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: primaryRed)),
+            if (user.username != null && user.username!.isNotEmpty)
+              Text("@${user.username}", style: const TextStyle(fontSize: 16, color: Colors.grey)),
+            
+            const SizedBox(height: 15),
 
-            const SizedBox(height: 20),
-            CustomProfileField(label: "Descripción:", controller: descController, icon: Icons.description, isEditing: isEditing, maxLines: 3),
-            CustomProfileField(label: "Ubicación:", controller: locController, icon: Icons.location_on_outlined, isEditing: isEditing),
-
-            // Mostramos campos según el ROL REAL del usuario
-            if (user.role == UserRole.estudiante) ...[
-              CustomProfileField(label: "Estudios:", controller: studiesController, icon: Icons.book_outlined, isEditing: isEditing),
-              CustomProfileField(label: "Institución:", controller: instController, icon: Icons.business_outlined, isEditing: isEditing),
-            ] else ...[
-              _buildOwnerPropertiesList(), // Lista de pisos para Bea
-            ],
-
-            const SizedBox(height: 30),
+            // INTERCAMBIO ENTRE MODO EDICIÓN Y MODO VISTA
             if (isEditing) 
-              ElevatedButton(
-                onPressed: () async {
-                  final updatedUser = UserModel(
-                    id: user.id,
-                    email: user.email,
-                    fullName: nameController.text,
-                    description: descController.text,
-                    location: locController.text,
-                    studies: studiesController.text,
-                    institution: instController.text,
-                    role: user.role,
-                  );
-                  
-                  await authVM.updateProfile(updatedUser);
-                  setState(() => isEditing = false);
-                },
-                style: ElevatedButton.styleFrom(backgroundColor: primaryRed, minimumSize: const Size(150, 45)),
-                child: const Text("Confirmar", style: TextStyle(color: Colors.white)),
-              ),
+              _buildEditMode(user)
+            else 
+              _buildViewMode(user),
           ],
         ),
       ),
     );
   }
 
-  // --- Widgets de apoyo ---
   Widget _buildAvatar(UserModel user) {
-    return CircleAvatar(
-      radius: 60,
-      backgroundColor: Colors.grey[200],
-      child: const Icon(Icons.person, size: 80, color: Colors.grey),
-    );
-  }
-
-  Widget _buildOwnerPropertiesList() {
-    final propVM = context.watch<PropertyViewModel>();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Stack(
+      alignment: Alignment.bottomRight,
       children: [
-        const Text("Mis Propiedades:", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black54)),
-        const SizedBox(height: 10),
-        ...propVM.myProperties.map((p) => Container(
-          width: double.infinity,
-          margin: const EdgeInsets.only(bottom: 8),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(10)),
-          child: Text(p.title), // Muestra el título del piso (ej: Apartamento Prueba1)
-        )).toList(),
+        CircleAvatar(
+          radius: 65,
+          backgroundColor: Colors.black,
+          backgroundImage: user.avatarUrl != null ? NetworkImage(user.avatarUrl!) : null,
+          child: user.avatarUrl == null ? const Icon(Icons.person, size: 80, color: Colors.white) : null,
+        ),
+        CircleAvatar(
+          radius: 20,
+          backgroundColor: Colors.white,
+          child: CircleAvatar(
+            radius: 17,
+            backgroundColor: primaryRed,
+            child: const Icon(Icons.camera_alt, color: Colors.white, size: 18),
+          ),
+        ),
       ],
     );
   }
-}
 
-// El widget de campo personalizado
-class CustomProfileField extends StatelessWidget {
-  final String label;
-  final TextEditingController controller;
-  final IconData icon;
-  final bool isEditing;
-  final int maxLines;
+  // ==========================================
+  // MODO VISTA (Como la imagen de la derecha)
+  // ==========================================
+  Widget _buildViewMode(UserModel user) {
+    final propVM = context.watch<PropertyViewModel>();
 
-  const CustomProfileField({super.key, required this.label, required this.controller, required this.icon, required this.isEditing, this.maxLines = 1});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 15),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [Icon(icon, size: 18, color: const Color(0xFFAE2535)), const SizedBox(width: 8), Text(label, style: const TextStyle(fontWeight: FontWeight.bold))]),
-          const SizedBox(height: 8),
-          TextField(
-            controller: controller,
-            enabled: isEditing,
-            maxLines: maxLines,
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: isEditing ? Colors.white : Colors.grey[50],
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: isEditing ? const BorderSide(color: Color(0xFFAE2535)) : BorderSide.none),
-            ),
+    return Column(
+      children: [
+        ElevatedButton(
+          onPressed: () => setState(() => isEditing = true),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: primaryRed, 
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 10)
           ),
-        ],
-      ),
+          child: const Text("Editar Perfil", style: TextStyle(color: Colors.white)),
+        ),
+        const SizedBox(height: 30),
+
+        // Descripción
+        Text(
+          user.description ?? "Sin descripción asignada.", 
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 14, color: Colors.black87)
+        ),
+        const SizedBox(height: 30),
+
+        // Ubicación
+        Row(
+          children: [
+            Icon(Icons.location_on_outlined, color: primaryRed),
+            const SizedBox(width: 10),
+            Text(user.location ?? "Sin ubicación", style: const TextStyle(fontSize: 14)),
+          ],
+        ),
+        const SizedBox(height: 20),
+
+        // Propiedades (Lista en texto plano)
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.domain, color: primaryRed),
+            const SizedBox(width: 10),
+            Expanded(
+              child: propVM.myProperties.isEmpty 
+                ? const Text("No tienes propiedades subidas.")
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: propVM.myProperties.map((p) => Padding(
+                      padding: const EdgeInsets.only(bottom: 15),
+                      child: Text(p.location, style: const TextStyle(fontSize: 14)),
+                    )).toList(),
+                  ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // ==========================================
+  // MODO EDICIÓN (Como la imagen de la izquierda)
+  // ==========================================
+  Widget _buildEditMode(UserModel user) {
+    final propVM = context.watch<PropertyViewModel>();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("Descripción:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+        const SizedBox(height: 5),
+        TextField(
+          controller: descController,
+          maxLines: 3,
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: Colors.grey[300],
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        Row(
+          children: [
+            Icon(Icons.location_on_outlined, color: primaryRed, size: 20),
+            const SizedBox(width: 8),
+            const Text("Ubicación:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          ],
+        ),
+        const SizedBox(height: 5),
+        TextField(
+          controller: locController,
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: Colors.grey[300],
+            contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        Row(
+          children: [
+            Icon(Icons.domain, color: primaryRed, size: 20),
+            const SizedBox(width: 8),
+            const Text("Propiedades:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          ],
+        ),
+        const SizedBox(height: 5),
+        
+        // Caja gris para las propiedades (Solo lectura visual en edición)
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(15),
+          decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10)),
+          child: propVM.myProperties.isEmpty 
+            ? const Text("No hay propiedades.")
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: propVM.myProperties.map((p) => Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Text(p.location, style: const TextStyle(fontSize: 14)),
+                )).toList(),
+              ),
+        ),
+
+        const SizedBox(height: 30),
+        Center(
+          child: ElevatedButton(
+            onPressed: () async {
+              // CREAMOS EL USUARIO ACTUALIZADO
+              final updatedUser = UserModel(
+                id: user.id,
+                email: user.email,
+                fullName: user.fullName,
+                username: user.username,
+                description: descController.text,
+                location: locController.text,
+                studies: user.studies,
+                institution: user.institution,
+                avatarUrl: user.avatarUrl,
+                role: user.role,
+              );
+              // GUARDAMOS EN SUPABASE
+              await context.read<AuthViewModel>().updateProfile(updatedUser);
+              setState(() => isEditing = false);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryRed, 
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12)
+            ),
+            child: const Text("Confirmar", style: TextStyle(color: Colors.white)),
+          ),
+        ),
+        const SizedBox(height: 40),
+      ],
     );
   }
 }

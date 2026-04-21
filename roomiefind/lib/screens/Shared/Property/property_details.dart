@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:roomiefind/models/property_models.dart';
+import 'package:roomiefind/models/property_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:roomiefind/screens/Owner/createAppartment.dart'; // Ajusta la ruta si es necesario
 

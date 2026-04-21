@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:roomiefind/widgets/property_card.dart';
-import 'package:roomiefind/models/property_models.dart';
+import 'package:roomiefind/models/property_model.dart';
 
 class SearchScreen extends StatelessWidget {
   const SearchScreen({super.key});
@@ -10,20 +10,22 @@ class SearchScreen extends StatelessWidget {
     const Color primaryColor = Color(0xFFAE2535);
 
     // 1. LISTA DE PRUEBA TEMPORAL (Datos compatibles con PropertyModel)
-    final List<PropertyModel> resultadosBusqueda = [
-      PropertyModel(
-        ownerId: "search_1",
-        title: "Apartamento luminoso cerca del Campus",
-        type: "Apartamento",
-        location: "Granada, Camino de Ronda",
-        price: 450.0,
-        description: "Ideal para estudiantes de ciencias.",
-        imageUrls: ["https://via.placeholder.com/300"],
-        transport: {"Bus": true, "Metro": true},
-        services: {"Wifi": true, "Calefacción": true},
-        additionalInfo: {},
-      ),
-    ];
+final List<PropertyModel> resultadosBusqueda = [
+  PropertyModel(
+    id: "test_1",
+    ownerId: "search_1",
+    title: "Apartamento luminoso cerca del Campus",
+    type: "Apartamento",
+    location: "Granada, Camino de Ronda",
+    price: 450.0,
+    description: "Ideal para estudiantes de ciencias.",
+    imageUrls: ["https://via.placeholder.com/300"],
+    transport: {"Bus": true, "Metro": true},
+    services: {"Wifi": true, "Calefacción": true},
+    additionalInfo: {},
+  ),
+];
+
 
     return Scaffold(
       backgroundColor: Colors.white,

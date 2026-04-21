@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import 'package:roomiefind/models/property_models.dart';
+import 'package:roomiefind/models/property_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../viewmodels/property_viewmodel.dart';
@@ -102,30 +102,33 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
       return;
     }
 
-    final propiedadData = PropertyModel(
-      id: esEdicion ? widget.propertyAEditar!.id : null,
-      ownerId: user.id,
-      title: _nombreController.text,
-      type: "Piso de Estudiantes",
-      location: _ubicacionController.text,
-      price: double.tryParse(_precioController.text) ?? 0.0,
-      description: _descripcionController.text,
-      imageUrls: esEdicion ? widget.propertyAEditar!.imageUrls : [],
-      transport: {"autobus": tieneAutobus, "metro": tieneMetro},
-      services: {
-        "habitacion_individual": servHabIndiv,
-        "agua": servAgua,
-        "luz": servLuz,
-        "wifi": servWifi,
-      },
-      additionalInfo: {
-        "mascotas": infoMascotas,
-        "fumadores": infoFumadores,
-        "solo_hombres_mujeres": infoSoloHyM,
-        "compartido": infoCompartido,
-      },
-      availableDate: DateTime.now(),
-    );
+final propiedadData = PropertyModel(
+  id: esEdicion
+      ? widget.propertyAEditar!.id
+      : "temp_${DateTime.now().millisecondsSinceEpoch}",
+  ownerId: user.id,
+  title: _nombreController.text,
+  type: "Piso de Estudiantes",
+  location: _ubicacionController.text,
+  price: double.tryParse(_precioController.text) ?? 0.0,
+  description: _descripcionController.text,
+  imageUrls: esEdicion ? widget.propertyAEditar!.imageUrls : [],
+  transport: {"autobus": tieneAutobus, "metro": tieneMetro},
+  services: {
+    "habitacion_individual": servHabIndiv,
+    "agua": servAgua,
+    "luz": servLuz,
+    "wifi": servWifi,
+  },
+  additionalInfo: {
+    "mascotas": infoMascotas,
+    "fumadores": infoFumadores,
+    "solo_hombres_mujeres": infoSoloHyM,
+    "compartido": infoCompartido,
+  },
+  availableDate: DateTime.now(),
+);
+
 
     bool exito;
     if (esEdicion) {

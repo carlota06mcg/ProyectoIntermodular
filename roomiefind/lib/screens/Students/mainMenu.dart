@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart'; // Importante para usar Consumer
 import 'package:roomiefind/widgets/property_card.dart';
-import 'package:roomiefind/models/property_models.dart';
+import 'package:roomiefind/models/property_model.dart';
 import 'package:roomiefind/viewmodels/property_viewmodel.dart';
 
 class MainmenuScreen extends StatefulWidget {

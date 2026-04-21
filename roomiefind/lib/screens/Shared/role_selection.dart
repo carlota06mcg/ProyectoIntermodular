@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // Importante para acceder al ViewModel
+import 'package:provider/provider.dart';
 import 'package:roomiefind/models/user_model.dart';
-import 'package:roomiefind/routes/routes.dart'; 
+import 'package:roomiefind/routes/routes.dart';
 import 'package:roomiefind/viewmodels/auth_viewmodel.dart';
 
 class RoleSelectionScreen extends StatelessWidget {
@@ -10,13 +10,12 @@ class RoleSelectionScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const Color primaryRed = Color(0xFFAE2535);
-    // Accedemos al AuthViewModel
     final authViewModel = Provider.of<AuthViewModel>(context);
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Stack( // Usamos Stack para poner el cargando encima si fuera necesario
+        child: Stack(
           children: [
             Center(
               child: Column(
@@ -32,8 +31,7 @@ class RoleSelectionScreen extends StatelessWidget {
                   ),
                   Image.asset('lib/photos/Logo.png', height: 100),
                   const SizedBox(height: 60),
-                  
-                  // Botón Estudiante
+
                   _buildRoleButton(
                     context: context,
                     label: 'Estudiante',
@@ -42,9 +40,10 @@ class RoleSelectionScreen extends StatelessWidget {
                     isLoading: authViewModel.isLoading,
                     onPressed: () async {
                       final success = await authViewModel.updateUserRole(UserRole.estudiante);
+
                       if (success && context.mounted) {
                         Navigator.pushReplacementNamed(context, AppRoutes.mainMenu);
-                      } else if (!success && context.mounted) {
+                      } else if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text(authViewModel.errorMessage ?? 'Error')),
                         );
@@ -54,7 +53,6 @@ class RoleSelectionScreen extends StatelessWidget {
 
                   const SizedBox(height: 40),
 
-                  // Botón Propietario
                   _buildRoleButton(
                     context: context,
                     label: 'Propietario',
@@ -63,9 +61,10 @@ class RoleSelectionScreen extends StatelessWidget {
                     isLoading: authViewModel.isLoading,
                     onPressed: () async {
                       final success = await authViewModel.updateUserRole(UserRole.propietario);
+
                       if (success && context.mounted) {
                         Navigator.pushReplacementNamed(context, AppRoutes.ownAppart);
-                      } else if (!success && context.mounted) {
+                      } else if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text(authViewModel.errorMessage ?? 'Error')),
                         );
@@ -75,7 +74,7 @@ class RoleSelectionScreen extends StatelessWidget {
                 ],
               ),
             ),
-            // Si está cargando, mostramos un indicador visual
+
             if (authViewModel.isLoading)
               const Center(child: CircularProgressIndicator(color: primaryRed)),
           ],
@@ -90,13 +89,13 @@ class RoleSelectionScreen extends StatelessWidget {
     required IconData icon,
     required Color color,
     required VoidCallback onPressed,
-    required bool isLoading, // Añadimos el estado de carga
+    required bool isLoading,
   }) {
     return SizedBox(
       width: 180,
       height: 164,
       child: ElevatedButton(
-        onPressed: isLoading ? null : onPressed, // Deshabilitar si carga
+        onPressed: isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: color,
           shape: RoundedRectangleBorder(
@@ -108,7 +107,7 @@ class RoleSelectionScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, size: 50, color: Colors.white),
-            const SizedBox(height: 15), 
+            const SizedBox(height: 15),
             Text(
               label,
               textAlign: TextAlign.center,

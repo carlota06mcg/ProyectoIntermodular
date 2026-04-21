@@ -3,38 +3,54 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class AuthService {
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  // Getter para que otros puedan usar el cliente si es necesario
   SupabaseClient get supabase => _supabase;
 
-  // MUEVE AQUÍ: signUp
-  Future<void> signUp({
+  // REGISTRO COMPLETO: auth + profiles
+  Future<AuthResponse> signUp({
     required String email,
     required String password,
     required String fullName,
     required String username,
   }) async {
-    await _supabase.auth.signUp(
+    final AuthResponse res = await _supabase.auth.signUp(
       email: email,
       password: password,
-      data: {
+    );
+
+    // Si el usuario se creó correctamente
+    if (res.user != null) {
+      await _supabase.from('profiles').insert({
+        'id': res.user!.id,
         'full_name': fullName,
         'username': username,
-      },
+        'email': email,
+        'role': 'pendiente', // hasta que elija rol
+      });
+    }
+
+    return res;
+  }
+
+  // LOGIN
+  Future<AuthResponse> signIn({
+    required String email,
+    required String password,
+  }) async {
+    final AuthResponse res = await _supabase.auth.signInWithPassword(
+      email: email,
+      password: password,
     );
+    return res;
   }
 
-  // MUEVE AQUÍ: signIn
-  Future<void> signIn({required String email, required String password}) async {
-    await _supabase.auth.signInWithPassword(email: email, password: password);
-  }
-
-  // MUEVE AQUÍ: usernameExists
+  // COMPROBAR USERNAME
   Future<bool> usernameExists(String username) async {
     final response = await _supabase
         .from('profiles')
         .select()
         .eq('username', username)
         .maybeSingle();
+
     return response != null;
   }
 }

@@ -1,118 +1,160 @@
 import 'dart:io';
-import 'package:roomiefind/models/property_models.dart';
+import 'package:roomiefind/models/property_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class PropertyService {
-  // Definimos la variable como _supabase
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  // 1. Subir imágenes al Storage y obtener sus URLs
+  // ============================
+  // 1. SUBIR IMÁGENES
+  // ============================
   Future<List<String>> uploadImages(List<File> images, String propertyId) async {
     List<String> urls = [];
-    try {
-      for (var i = 0; i < images.length; i++) {
-        final String path = 'properties/$propertyId/img_$i.jpg';
-        
-        // Subida del archivo
-        await _supabase.storage.from('property_images').upload(
-          path, 
-          images[i],
-          fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
-        );
 
-        // Obtención de la URL pública
-        final String url = _supabase.storage.from('property_images').getPublicUrl(path);
-        urls.add(url);
-      }
-    } catch (e) {
-      print("Error subiendo imágenes: $e");
+    for (var i = 0; i < images.length; i++) {
+      final String path = 'properties/$propertyId/img_$i.jpg';
+
+      await _supabase.storage.from('property_images').upload(
+        path,
+        images[i],
+        fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+      );
+
+      final String url =
+          _supabase.storage.from('property_images').getPublicUrl(path);
+
+      urls.add(url);
     }
+
     return urls;
   }
 
-  // 2. Guardar la propiedad en la base de datos
-  Future<void> createProperty(PropertyModel property, List<File> images) async {
+  // ============================
+  // 2. CREAR PROPIEDAD
+  // ============================
+  Future<PropertyModel> createProperty(
+      PropertyModel property, List<File> images) async {
     try {
-      // Insertamos la propiedad
-      final response = await _supabase.from('properties').insert(property.toJson()).select().single();
-      final String propertyId = response['id'].toString();
+      // Insertamos y obtenemos el registro completo
+      final response = await _supabase
+          .from('properties')
+          .insert(property.toJson())
+          .select()
+          .single();
 
-      // Si hay imágenes, las subimos y actualizamos el registro
+      final String propertyId = response['id'];
+
+      // Subimos imágenes si existen
+      List<String> urls = [];
       if (images.isNotEmpty) {
-        final List<String> urls = await uploadImages(images, propertyId);
-        await _supabase.from('properties').update({'images': urls}).eq('id', propertyId);
+        urls = await uploadImages(images, propertyId);
+
+        await _supabase
+            .from('properties')
+            .update({'imageUrls': urls})
+            .eq('id', propertyId);
       }
+
+      // Devolvemos el modelo completo
+        return PropertyModel.fromJson({
+          ...response,
+          'imageUrls': urls,
+        });
+
     } catch (e) {
       print("Error creando propiedad: $e");
       rethrow;
     }
   }
 
-  // 3. Obtener todas las propiedades (Para el Estudiante)
+  // ============================
+  // 3. OBTENER TODAS LAS PROPIEDADES
+  // ============================
   Future<List<PropertyModel>> getProperties() async {
     try {
-      final data = await _supabase.from('properties').select();
-      return (data as List).map((json) => PropertyModel.fromJson(json)).toList();
+      final data = await _supabase.from('properties').select('*');
+
+      return (data as List).map((json) {
+        return PropertyModel.fromJson(_normalizeJson(json));
+      }).toList();
     } catch (e) {
       print("Error obteniendo propiedades: $e");
       return [];
     }
   }
 
-  // 4. Obtener solo mis propiedades (Para el Propietario)
+  // ============================
+  // 4. OBTENER PROPIEDADES DEL DUEÑO
+  // ============================
   Future<List<PropertyModel>> getPropertiesByOwner(String userId) async {
     try {
-      // CAMBIO: Usamos _supabase en lugar de client
       final response = await _supabase
           .from('properties')
-          .select()
+          .select('*')
           .eq('owner_id', userId);
 
-      return (response as List).map((json) => PropertyModel.fromJson(json)).toList();
+      return (response as List).map((json) {
+        return PropertyModel.fromJson(_normalizeJson(json));
+      }).toList();
     } catch (e) {
       print("Error obteniendo mis propiedades: $e");
       return [];
     }
   }
 
-  // 5. Actualizar propiedad existente (Para el Propietario)
-  Future<void> updateProperty(PropertyModel property, List<File> newImages) async {
+  // ============================
+  // 5. ACTUALIZAR PROPIEDAD
+  // ============================
+  Future<void> updateProperty(
+      PropertyModel property, List<File> newImages) async {
     try {
-      if (property.id == null) {
-        throw Exception("El ID de la propiedad no puede ser nulo para actualizar");
-      }
-
-      // 1. Actualizamos los datos de texto, números y booleanos (el toJson se encarga del formato)
+      // 1. Actualizamos datos base
       await _supabase
           .from('properties')
           .update(property.toJson())
-          .eq('id', property.id!);
+          .eq('id', property.id);
 
-      // 2. Si el usuario seleccionó NUEVAS imágenes en la edición, las subimos
+      // 2. Subimos nuevas imágenes
       if (newImages.isNotEmpty) {
-        // Aprovechamos el método que ya tienes para subir y obtener URLs
-        final List<String> newUrls = await uploadImages(newImages, property.id!);
-        
-        // Juntamos las imágenes que ya tenía en Supabase con las nuevas
+        final List<String> newUrls =
+            await uploadImages(newImages, property.id);
+
         final List<String> allUrls = [...property.imageUrls, ...newUrls];
 
-        // Hacemos un segundo update solo para guardar la lista de imágenes completa
         await _supabase
             .from('properties')
-            .update({'images': allUrls})
-            .eq('id', property.id!);
+            .update({'imageUrls': allUrls})
+            .eq('id', property.id);
       }
     } catch (e) {
       print("Error actualizando propiedad: $e");
       rethrow;
     }
   }
-  // 6. Eliminar propiedad (Para el Propietario)
+
+  // ============================
+  // 6. ELIMINAR PROPIEDAD
+  // ============================
   Future<void> deleteProperty(String propertyId) async {
-  try {
-    await _supabase.from('properties').delete().eq('id', propertyId);
-  } catch (e) {
-    throw Exception("Error al eliminar la propiedad: $e");
+    try {
+      await _supabase.from('properties').delete().eq('id', propertyId);
+    } catch (e) {
+      throw Exception("Error al eliminar la propiedad: $e");
+    }
   }
-}
+
+  // ============================
+  // NORMALIZAR JSONB
+  // ============================
+  Map<String, dynamic> _normalizeJson(Map<String, dynamic> json) {
+    return {
+      ...json,
+      'imageUrls': json['imageUrls'] ?? [],
+      'transport': json['transport'] is List ? {} : json['transport'],
+      'services': json['services'] is List ? {} : json['services'],
+      'additional_info':
+          json['additional_info'] is List ? {} : json['additional_info'],
+
+    };
+  }
 }

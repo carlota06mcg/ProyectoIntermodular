@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:roomiefind/widgets/property_card.dart';
-import 'package:roomiefind/models/property_models.dart';
+import 'package:roomiefind/models/property_model.dart';
 
 class HistoryScreen extends StatelessWidget {
   const HistoryScreen({super.key});
@@ -10,32 +10,34 @@ class HistoryScreen extends StatelessWidget {
     const Color primaryColor = Color(0xFFAE2535);
 
     // 1. LISTA DE PRUEBA TEMPORAL (Para que no de error 'propiedadesPrueba')
-    final List<PropertyModel> misPropiedadesHistorial = [
-      PropertyModel(
-        ownerId: "1",
-        title: "Habitación en Centro Histórico",
-        type: "Piso compartido",
-        location: "Granada, España",
-        price: 350.0,
-        description: "Excelente ubicación cerca de la catedral.",
-        imageUrls: ["https://via.placeholder.com/150"],
-        transport: {"Bus": true},
-        services: {"Wifi": true, "Agua": true},
-        additionalInfo: {"Mascotas": false},
-      ),
-      PropertyModel(
-        ownerId: "2",
-        title: "Estudio Moderno",
-        type: "Estudio",
-        location: "Zaidín, Granada",
-        price: 500.0,
-        description: "Estudio recién reformado.",
-        imageUrls: ["https://via.placeholder.com/150"],
-        transport: {"Metro": true},
-        services: {"Wifi": true},
-        additionalInfo: {},
-      ),
-    ];
+final List<PropertyModel> misPropiedadesHistorial = [
+  PropertyModel(
+    id: "hist_1",
+    ownerId: "1",
+    title: "Habitación en Centro Histórico",
+    type: "Piso compartido",
+    location: "Granada, España",
+    price: 350.0,
+    description: "Excelente ubicación cerca de la catedral.",
+    imageUrls: ["https://via.placeholder.com/150"],
+    transport: {"Bus": true},
+    services: {"Wifi": true, "Agua": true},
+    additionalInfo: {"Mascotas": false},
+  ),
+  PropertyModel(
+    id: "hist_2",
+    ownerId: "2",
+    title: "Estudio Moderno",
+    type: "Estudio",
+    location: "Zaidín, Granada",
+    price: 500.0,
+    description: "Estudio recién reformado.",
+    imageUrls: ["https://via.placeholder.com/150"],
+    transport: {"Metro": true},
+    services: {"Wifi": true},
+    additionalInfo: {},
+  ),
+];
 
     return Scaffold(
       backgroundColor: Colors.white,

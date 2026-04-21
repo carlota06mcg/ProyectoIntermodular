@@ -1,17 +1,13 @@
-// 1. EL ENUM DEBE IR FUERA DE LA CLASE O AL PRINCIPIO
-enum UserRole {
-  estudiante,
-  propietario,
-  none
-}
+enum UserRole { estudiante, propietario, none }
 
 class UserModel {
   final String id;
   final String email;
   final String fullName;
+  final String? username; // <-- AÑADIDO: El @nombre_de_usuario
   final String? description;
   final String? location;
-  final String? studies;     // Campos específicos para Carlota (Estudiante)
+  final String? studies;
   final String? institution;
   final String? avatarUrl;
   final UserRole role;
@@ -20,6 +16,7 @@ class UserModel {
     required this.id,
     required this.email,
     required this.fullName,
+    this.username,
     this.description,
     this.location,
     this.studies,
@@ -28,12 +25,12 @@ class UserModel {
     this.role = UserRole.none,
   });
 
-  // 2. CONVERTIR DE JSON (Supabase) A DART
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
       id: json['id'],
       email: json['email'] ?? '',
       fullName: json['full_name'] ?? '',
+      username: json['username'], // <-- AÑADIDO (Asegúrate de tener esta columna en Supabase)
       description: json['description'],
       location: json['location'],
       studies: json['studies'],
@@ -43,21 +40,20 @@ class UserModel {
     );
   }
 
-  // 3. CONVERTIR DE DART A JSON (Para enviar a Supabase)
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'full_name': fullName,
+      'username': username, // <-- AÑADIDO
       'description': description,
       'location': location,
       'studies': studies,
       'institution': institution,
       'avatar_url': avatarUrl,
-      'role': role.name, // .name guarda 'estudiante' o 'propietario' como texto
+      'role': role.name,
     };
   }
 
-  // Función auxiliar para leer el rol desde la base de datos
   static UserRole _parseRole(String? roleString) {
     if (roleString == 'estudiante') return UserRole.estudiante;
     if (roleString == 'propietario') return UserRole.propietario;

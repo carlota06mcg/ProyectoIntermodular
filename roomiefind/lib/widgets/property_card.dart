@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:roomiefind/models/property_models.dart';
+import 'package:roomiefind/models/property_model.dart';
 import 'package:roomiefind/screens/Owner/createAppartment.dart';
 import 'package:provider/provider.dart';
 import '../../viewmodels/property_viewmodel.dart';

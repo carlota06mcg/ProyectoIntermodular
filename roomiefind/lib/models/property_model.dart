@@ -1,5 +1,5 @@
 class PropertyModel {
-  final String? id;
+  final String id;
   final String ownerId;
   final String title;
   final String type;
@@ -7,13 +7,13 @@ class PropertyModel {
   final double price;
   final String description;
   final List<String> imageUrls;
-  final Map<String, bool> transport;
-  final Map<String, bool> services;
-  final Map<String, bool> additionalInfo;
+  final Map<String, dynamic> transport;
+  final Map<String, dynamic> services;
+  final Map<String, dynamic> additionalInfo;
   final DateTime? availableDate;
 
   PropertyModel({
-    this.id,
+    required this.id,
     required this.ownerId,
     required this.title,
     required this.type,
@@ -27,7 +27,6 @@ class PropertyModel {
     this.availableDate,
   });
 
-  // De JSON (Supabase) a Objeto Dart
   factory PropertyModel.fromJson(Map<String, dynamic> json) {
     return PropertyModel(
       id: json['id'],
@@ -38,16 +37,15 @@ class PropertyModel {
       price: (json['price'] as num).toDouble(),
       description: json['description'],
       imageUrls: List<String>.from(json['images'] ?? []),
-      transport: Map<String, bool>.from(json['transport'] ?? {}),
-      services: Map<String, bool>.from(json['services'] ?? {}),
-      additionalInfo: Map<String, bool>.from(json['additional_info'] ?? {}),
-      availableDate: json['available_date'] != null 
-          ? DateTime.parse(json['available_date']) 
+      transport: Map<String, dynamic>.from(json['transport'] ?? {}),
+      services: Map<String, dynamic>.from(json['services'] ?? {}),
+      additionalInfo: Map<String, dynamic>.from(json['additional_info'] ?? {}),
+      availableDate: json['available_date'] != null
+          ? DateTime.parse(json['available_date'])
           : null,
     );
   }
 
-  // De Objeto Dart a JSON (para guardar en Supabase)
   Map<String, dynamic> toJson() {
     return {
       'owner_id': ownerId,
@@ -63,6 +61,4 @@ class PropertyModel {
       'available_date': availableDate?.toIso8601String(),
     };
   }
-
-  
 }

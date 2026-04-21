@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart'; // Importante para acceder al cliente
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
-import '../services/user_service.dart'; 
+import '../services/user_service.dart';
 import '../models/user_model.dart';
 
 class AuthViewModel extends ChangeNotifier {
   UserModel? _currentUser;
   UserModel? get currentUser => _currentUser;
+
   final AuthService _authService = AuthService();
   final UserService _userService = UserService();
+  final _supabase = Supabase.instance.client;
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
@@ -16,10 +18,26 @@ class AuthViewModel extends ChangeNotifier {
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
-  // Acceso directo al cliente de Supabase para evitar errores de "undefined getter"
-  final _supabase = Supabase.instance.client;
+  // ============================
+  // CARGAR PERFIL DEL USUARIO
+  // ============================
+  Future<void> loadCurrentUser() async {
+    final user = _supabase.auth.currentUser;
+    if (user == null) return;
 
+    final data = await _userService.getUserProfile(user.id);
+    if (data != null) {
+      _currentUser = UserModel.fromJson({
+        ...data,
+        'email': user.email, // <- viene de auth
+      });
+      notifyListeners();
+    }
+  }
+
+  // ============================
   // REGISTRO
+  // ============================
   Future<bool> register({
     required String email,
     required String password,
@@ -39,37 +57,65 @@ class AuthViewModel extends ChangeNotifier {
         return false;
       }
 
-      await _authService.signUp(
+      final res = await _authService.signUp(
         email: email,
         password: password,
         fullName: fullName,
         username: username,
       );
 
+      if (res.user == null) {
+        _errorMessage = "No se pudo crear el usuario";
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      // Cargar perfil recién creado
+      await loadCurrentUser();
+
       _isLoading = false;
       notifyListeners();
       return true;
+
     } catch (e) {
-      _errorMessage = e.toString().contains("already registered") 
-          ? "Este correo ya está en uso" 
-          : "Error en el registro";
+      _errorMessage = "Error en el registro";
       _isLoading = false;
       notifyListeners();
       return false;
     }
   }
 
+  // ============================
   // LOGIN
-  Future<bool> login({required String email, required String password}) async {
+  // ============================
+  Future<bool> login({
+    required String email,
+    required String password,
+  }) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      await _authService.signIn(email: email, password: password);
+      final res = await _authService.signIn(
+        email: email,
+        password: password,
+      );
+
+      if (res.user == null) {
+        _errorMessage = "Email o contraseña incorrectos";
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      await loadCurrentUser();
+
       _isLoading = false;
       notifyListeners();
       return true;
+
     } catch (e) {
       _errorMessage = "Email o contraseña incorrectos";
       _isLoading = false;
@@ -78,16 +124,17 @@ class AuthViewModel extends ChangeNotifier {
     }
   }
 
+  // ============================
   // ACTUALIZAR ROL
+  // ============================
   Future<bool> updateUserRole(UserRole role) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      // Usamos el acceso directo de la instancia para evitar el error de la captura 6
       final user = _supabase.auth.currentUser;
-      
+
       if (user == null) {
         _errorMessage = "No hay sesión activa";
         _isLoading = false;
@@ -95,42 +142,39 @@ class AuthViewModel extends ChangeNotifier {
         return false;
       }
 
-      // Llamamos al UserService (Asegúrate de que el método reciba String)
       await _userService.updateUserRole(user.id, role.name);
+
+      // Refrescar perfil
+      await loadCurrentUser();
 
       _isLoading = false;
       notifyListeners();
       return true;
+
     } catch (e) {
-      _errorMessage = "Error al guardar el rol: $e";
+      _errorMessage = "Error al guardar el rol";
       _isLoading = false;
       notifyListeners();
       return false;
     }
   }
-  
-  // ... dentro de tu clase AuthViewModel ...
 
-Future<void> refreshUserProfile() async {
-  if (_currentUser == null) return;
-  
-  final userData = await _userService.getUserProfile(_currentUser!.id);
-  if (userData != null) {
-    _currentUser = UserModel.fromJson(userData);
-    notifyListeners(); // Esto hace que la pantalla se actualice sola
+  // ============================
+  // ACTUALIZAR PERFIL COMPLETO
+  // ============================
+  Future<void> updateProfile(UserModel updatedUser) async {
+    try {
+      await _userService.updateUserProfile(
+        updatedUser.id,
+        updatedUser.toJson(),
+      );
+
+      _currentUser = updatedUser;
+      notifyListeners();
+
+    } catch (e) {
+      print("Error actualizando perfil en VM: $e");
+      rethrow;
+    }
   }
-}
-
-Future<void> updateProfile(UserModel updatedUser) async {
-  try {
-    // Usamos el nuevo método del servicio enviando el JSON del modelo
-    await _userService.updateUserProfile(updatedUser.id, updatedUser.toJson());
-    _currentUser = updatedUser;
-    notifyListeners();
-  } catch (e) {
-    print("Error actualizando perfil en VM: $e");
-    rethrow;
-  }
-}
-
 }

@@ -45,7 +45,7 @@ class _MainWrapperState extends State<MainWrapper> {
       ),
       
       // Cambiamos la barra según el rol
-      bottomNavigationBar: widget.isOwner 
+      bottomNavigationBar: widget.isOwner
         ? OwnerBottomNavBar( // La que creamos al principio
             currentIndex: _currentIndex,
             onTap: (index) => setState(() => _currentIndex = index),

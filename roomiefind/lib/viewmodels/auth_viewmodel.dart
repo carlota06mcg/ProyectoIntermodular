@@ -177,4 +177,21 @@ class AuthViewModel extends ChangeNotifier {
       rethrow;
     }
   }
+  
+  // ============================
+// LOGOUT
+// ============================
+Future<void> logout() async {
+  try {
+    await _supabase.auth.signOut();
+    _currentUser = null;
+    notifyListeners();
+  } catch (e) {
+    print("Error al cerrar sesión: $e");
+  }
+}
+
+
+
+
 }

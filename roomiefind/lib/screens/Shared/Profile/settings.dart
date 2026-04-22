@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:roomiefind/viewmodels/auth_viewmodel.dart';
+import 'package:roomiefind/routes/routes.dart';
+import 'package:roomiefind/models/user_model.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -7,18 +11,17 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     const Color primaryColor = Color(0xFFAE2535);
     const Color secondaryIconColor = Color(0xFFC62828);
-    const Color textColor = Colors.black87;
     const Color secondaryTextColor = Colors.black54;
 
+    final auth = context.watch<AuthViewModel>();
+    final user = auth.currentUser;
+
     return Scaffold(
-      backgroundColor: Colors.white, // Fondo blanco para la pantalla de ajustes
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        // Un AppBar transparente para el status bar (hora, etc.)
         backgroundColor: Colors.transparent,
         elevation: 0,
-        // 1. Botón de flecha hacia atrás (izquierda)
         leading: const BackButton(color: secondaryIconColor),
-        // 2. Título "Ajustes" (centro)
         centerTitle: true,
         title: const Text(
           'Ajustes',
@@ -30,32 +33,36 @@ class SettingsScreen extends StatelessWidget {
         ),
       ),
       body: SingleChildScrollView(
-        // Padding generoso alrededor de todo el contenido
         padding: const EdgeInsets.symmetric(horizontal: 40.0),
         child: Column(
           children: [
-            const SizedBox(height: 10), // Espacio superior
+            const SizedBox(height: 10),
 
-            // --- SECCIÓN DE PERFIL ---
-            // 3. Foto de perfil (el gatito con lazos)
-            // Reemplaza con tu imagen real de asset
+            // FOTO DE PERFIL
             Center(
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(100), // Bordes redondeados
-                child: Image.asset(
-                  'assets/images/perfil.png', // <-- PON AQUÍ LA RUTA DE TU FOTO DE PERFIL
-                  height: 120,
-                  width: 120,
-                  fit: BoxFit.cover, // Para que la imagen cubra todo el espacio
-                ),
+                borderRadius: BorderRadius.circular(100),
+                child: user?.avatarUrl != null
+                    ? Image.network(
+                        user!.avatarUrl!,
+                        height: 120,
+                        width: 120,
+                        fit: BoxFit.cover,
+                      )
+                    : Image.asset(
+                        'assets/images/perfil.png',
+                        height: 120,
+                        width: 120,
+                        fit: BoxFit.cover,
+                      ),
               ),
             ),
             const SizedBox(height: 20),
-            
-            // 4. Nombre de perfil
-            const Text(
-              'Carlota Maroto',
-              style: TextStyle(
+
+            // NOMBRE REAL
+            Text(
+              user?.fullName ?? "Usuario",
+              style: const TextStyle(
                 color: primaryColor,
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -63,26 +70,24 @@ class SettingsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 5),
 
-            // 5. Correo electrónico
-            const Text(
-              'correoimaginario@gmail.com',
-              style: TextStyle(
+            // CORREO REAL
+            Text(
+              user?.email ?? "correo no disponible",
+              style: const TextStyle(
                 color: secondaryTextColor,
                 fontSize: 14,
               ),
             ),
             const SizedBox(height: 25),
 
-            // 6. Línea divisoria horizontal
             const Divider(
-              color: Color(0x1F000000), // Negro con 12% de opacidad (Gris transparente)
-              thickness: 1,             // Una línea muy fina
-              height: 40,),
+              color: Color(0x1F000000),
+              thickness: 1,
+              height: 40,
+            ),
             const SizedBox(height: 25),
 
-            // --- SECCIÓN DE OPCIONES (TILES) ---
-            // 7. Lista de opciones de ajustes
-            // Widget reutilizable creado abajo
+            // OPCIONES
             const _SettingsTile(
               icon: Icons.settings_accessibility_rounded,
               title: 'Accesibilidad',
@@ -112,16 +117,66 @@ class SettingsScreen extends StatelessWidget {
               title: 'Sobre Nosotros',
             ),
 
-            const SizedBox(height: 40), // Espacio entre opciones y enlaces
+            const SizedBox(height: 40),
 
-            // --- SECCIÓN DE ENLACES ---
-            // 8. Enlaces finales (Cambiar a cuenta de Arrendatario / Cerrar Sesión)
-            // Widget reutilizable creado abajo
-            const _SettingsActionText(text: 'Cambiar a cuenta de Arrendatario'),
+            // ============================
+            // CAMBIO DE ROL DINÁMICO
+            // ============================
+            if (user?.role == UserRole.estudiante)
+              _SettingsActionText(
+                text: 'Cambiar a cuenta de Propietario',
+                onTap: () async {
+                  final ok = await context.read<AuthViewModel>()
+                      .updateUserRole(UserRole.propietario);
+
+                  if (ok && context.mounted) {
+                    Navigator.pushNamedAndRemoveUntil(
+                      context,
+                      AppRoutes.roleSelection,
+                      (_) => false,
+                    );
+                  }
+                },
+              ),
+
+            if (user?.role == UserRole.propietario)
+              _SettingsActionText(
+                text: 'Cambiar a cuenta de Estudiante',
+                onTap: () async {
+                  final ok = await context.read<AuthViewModel>()
+                      .updateUserRole(UserRole.estudiante);
+
+                  if (ok && context.mounted) {
+                    Navigator.pushNamedAndRemoveUntil(
+                      context,
+                      AppRoutes.roleSelection,
+                      (_) => false,
+                    );
+                  }
+                },
+              ),
+
             const SizedBox(height: 15),
-            const _SettingsActionText(text: 'Cerrar Sesión'),
-            const SizedBox(height: 40), // Espacio inferior
 
+            // ============================
+            // CERRAR SESIÓN
+            // ============================
+            _SettingsActionText(
+              text: 'Cerrar Sesión',
+              onTap: () async {
+                await context.read<AuthViewModel>().logout();
+
+                if (context.mounted) {
+                  Navigator.pushNamedAndRemoveUntil(
+                    context,
+                    AppRoutes.login,
+                    (_) => false,
+                  );
+                }
+              },
+            ),
+
+            const SizedBox(height: 40),
           ],
         ),
       ),
@@ -129,9 +184,7 @@ class SettingsScreen extends StatelessWidget {
   }
 }
 
-// --- WIDGETS PRIVADOS Y REUTILIZABLES ---
-
-// 7. Tile de Ajuste Reutilizable
+// TILE
 class _SettingsTile extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -144,18 +197,14 @@ class _SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color secondaryIconColor = Color(0xFFC62828); 
-    const Color secondaryTextColor = Colors.black54;
+    const Color secondaryIconColor = Color(0xFFC62828);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12.0),
       child: Row(
         children: [
-          // Icono (izquierda)
           Icon(icon, color: secondaryIconColor, size: 28),
-          const SizedBox(width: 15), // Espaciado entre icono y texto
-
-          // Título (centro)
+          const SizedBox(width: 15),
           Expanded(
             child: Text(
               title,
@@ -166,8 +215,6 @@ class _SettingsTile extends StatelessWidget {
               ),
             ),
           ),
-
-          // Flecha hacia la derecha (derecha)
           Icon(Icons.arrow_forward_ios_rounded, color: secondaryIconColor, size: 18),
         ],
       ),
@@ -175,27 +222,25 @@ class _SettingsTile extends StatelessWidget {
   }
 }
 
-// 8. Texto de Acción Reutilizable
+// ACCIONES
 class _SettingsActionText extends StatelessWidget {
   final String text;
+  final VoidCallback? onTap;
 
   const _SettingsActionText({
     Key? key,
     required this.text,
+    this.onTap,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    // Definimos el color primario del diseño (el rojo/burdeos)
-    const Color primaryColor = Color(0xFFAE2535); 
+    const Color primaryColor = Color(0xFFAE2535);
 
     return SizedBox(
       width: double.infinity,
       child: TextButton(
-        style: TextButton.styleFrom(
-          padding: const EdgeInsets.all(0),
-        ),
-        onPressed: () {}, // Pon aquí tu función
+        onPressed: onTap,
         child: Text(
           text,
           textAlign: TextAlign.center,

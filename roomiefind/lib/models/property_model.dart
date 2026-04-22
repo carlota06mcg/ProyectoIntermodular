@@ -36,7 +36,7 @@ class PropertyModel {
       location: json['location'],
       price: (json['price'] as num).toDouble(),
       description: json['description'],
-      imageUrls: List<String>.from(json['images'] ?? []),
+      imageUrls: List<String>.from(json['imageUrls'] ?? []), // ← FIX
       transport: Map<String, dynamic>.from(json['transport'] ?? {}),
       services: Map<String, dynamic>.from(json['services'] ?? {}),
       additionalInfo: Map<String, dynamic>.from(json['additional_info'] ?? {}),
@@ -54,7 +54,7 @@ class PropertyModel {
       'location': location,
       'price': price,
       'description': description,
-      'images': imageUrls,
+      'imageUrls': imageUrls, // ← FIX
       'transport': transport,
       'services': services,
       'additional_info': additionalInfo,

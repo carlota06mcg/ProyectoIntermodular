@@ -52,7 +52,7 @@ class AppRoutes {
 
       // Chat
       chatMenu:      (context) => const MenuChatsScreen(),
-      chatDetail:    (context) => const ChatPlantillaScreen(),
+      //chatDetail:    (context) => const ChatPlantillaScreen(),
 
       // Profile
       profile:       (context) => const ProfileScreen(),

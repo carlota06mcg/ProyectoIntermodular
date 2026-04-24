@@ -1,86 +1,138 @@
 import 'package:flutter/material.dart';
-import 'menu-chats.dart';
+import 'package:provider/provider.dart';
+import 'package:roomiefind/viewmodels/chat_viewmodel.dart';
 
-class ChatPlantillaScreen extends StatelessWidget {
-  const ChatPlantillaScreen({super.key});
+class ChatPlantillaScreen extends StatefulWidget {
+  final String chatId;
+  final String otherUserId;
+
+  const ChatPlantillaScreen({
+    super.key,
+    required this.chatId,
+    required this.otherUserId,
+  });
+
+  @override
+  State<ChatPlantillaScreen> createState() => _ChatPlantillaScreenState();
+}
+
+class _ChatPlantillaScreenState extends State<ChatPlantillaScreen> {
+  final TextEditingController _controller = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+
+    final vm = Provider.of<ChatViewModel>(context, listen: false);
+
+    // Cargar mensajes iniciales
+    vm.loadMessages(widget.chatId);
+
+    // Activar realtime
+    vm.listenToChat(widget.chatId);
+  }
+
+  void _scrollToBottom() {
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (_scrollController.hasClients) {
+        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final vm = Provider.of<ChatViewModel>(context);
+
+    // Scroll automático cuando llegan mensajes
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
-            // Custom Top Bar
+            // -------------------------------
+            // TOP BAR
+            // -------------------------------
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   IconButton(
-                  icon: const Icon(
-                    Icons.arrow_back_ios_new,
-                    color: Colors.black87,
-                    size: 22,
+                    icon: const Icon(
+                      Icons.arrow_back_ios_new,
+                      color: Colors.black87,
+                      size: 22,
+                    ),
+                    onPressed: () => Navigator.pop(context),
                   ),
-                  onPressed: () {
-                    // Esto simplemente cierra la pantalla actual y vuelve a la anterior
-                    Navigator.pop(context);
-                  },
-                ),
                   const CircleAvatar(
                     radius: 20,
                     backgroundImage: NetworkImage(
-                      'https://images.unsplash.com/photo-1555066931-4365d14bab8c?ixlib=rb-1.2.1&auto=format&fit=crop&w=200&q=80',
+                      'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=200&q=80',
                     ),
                   ),
                   const SizedBox(width: 10),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Student Experience',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: Colors.black87,
-                          ),
-                        ),
-                        Text(
-                          'Activo hace 11 minutos',
-                          style: TextStyle(color: Colors.black45, fontSize: 12),
-                        ),
-                      ],
+                  Expanded(
+                    child: Text(
+                      "Usuario: ${widget.otherUserId}",
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Colors.black87,
+                      ),
                     ),
-                  ),
-                  IconButton(
-                    icon: const Icon(
-                      Icons.phone_outlined,
-                      color: Colors.black87,
-                    ),
-                    onPressed: () {},
-                  ),
-                  IconButton(
-                    icon: const Icon(
-                      Icons.videocam_outlined,
-                      color: Colors.black87,
-                      size: 28,
-                    ),
-                    onPressed: () {},
                   ),
                 ],
               ),
             ),
             const Divider(height: 1, color: Colors.black12),
 
-            // Pantalla de chat vacía
-            const Expanded(
-              child: SizedBox(), // Área sin mensajes
+            // -------------------------------
+            // MENSAJES
+            // -------------------------------
+            Expanded(
+              child: vm.isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : ListView.builder(
+                      controller: _scrollController,
+                      itemCount: vm.messages.length,
+                      itemBuilder: (context, index) {
+                        final msg = vm.messages[index];
+                        final isMine = msg.senderId ==
+                            vm.supabase.auth.currentUser!.id;
+
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 15, vertical: 5),
+                          alignment: isMine
+                              ? Alignment.centerRight
+                              : Alignment.centerLeft,
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: isMine
+                                  ? const Color(0xFFB82D41)
+                                  : Colors.grey.shade200,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              msg.content,
+                              style: TextStyle(
+                                color: isMine ? Colors.white : Colors.black87,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
             ),
 
-            // Área de texto inferior
+            // -------------------------------
+            // INPUT DE MENSAJE
+            // -------------------------------
             Padding(
               padding: const EdgeInsets.only(
                 left: 15,
@@ -97,14 +149,13 @@ class ChatPlantillaScreen extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 5),
                 child: Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: TextField(
-                        decoration: InputDecoration(
+                        controller: _controller,
+                        decoration: const InputDecoration(
                           hintText: 'Mensaje...',
                           hintStyle: TextStyle(color: Colors.black38),
                           border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
                           contentPadding: EdgeInsets.symmetric(
                             vertical: 0,
                             horizontal: 15,
@@ -114,24 +165,17 @@ class ChatPlantillaScreen extends StatelessWidget {
                     ),
                     IconButton(
                       icon: const Icon(
-                        Icons.mic_none_outlined,
-                        color: Colors.black45,
+                        Icons.send,
+                        color: Color(0xFFB82D41),
                       ),
-                      onPressed: () {},
-                    ),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.sentiment_satisfied_alt,
-                        color: Colors.black45,
-                      ),
-                      onPressed: () {},
-                    ),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.image_outlined,
-                        color: Colors.black45,
-                      ),
-                      onPressed: () {},
+                      onPressed: () async {
+                        final text = _controller.text.trim();
+                        if (text.isEmpty) return;
+
+                        await vm.sendMessage(widget.chatId, text);
+                        _controller.clear();
+                        _scrollToBottom();
+                      },
                     ),
                   ],
                 ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:roomiefind/viewmodels/chat_viewmodel.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:provider/provider.dart';
 
@@ -24,6 +25,7 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthViewModel()),
         ChangeNotifierProvider(create: (_) => PropertyViewModel()),
+        ChangeNotifierProvider(create: (_) => ChatViewModel()),
         // Nota: Cuando crees el ProfileViewModel, deberás añadirlo aquí debajo
       ],
       child: const MyApp(),

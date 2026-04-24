@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:roomiefind/models/property_model.dart';
+import 'package:roomiefind/screens/Owner/createAppartment.dart';
+import 'package:roomiefind/screens/Shared/Chat/chat-plantilla.dart';
+import 'package:roomiefind/viewmodels/chat_viewmodel.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:roomiefind/screens/Owner/createAppartment.dart'; // Ajusta la ruta si es necesario
 
 class PropertyDetailsScreen extends StatelessWidget {
   final PropertyModel property;
@@ -19,10 +22,10 @@ class PropertyDetailsScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. Imagen y Botón Volver
+            // 1. Imagen + botón volver
             Stack(
               children: [
-                Container(
+                SizedBox(
                   height: 300,
                   width: double.infinity,
                   child: property.imageUrls.isNotEmpty
@@ -43,12 +46,13 @@ class PropertyDetailsScreen extends StatelessWidget {
               ],
             ),
 
+            // 2. Contenido
             Padding(
               padding: const EdgeInsets.all(20.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 2. Título y Precio
+                  // Título + precio
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -64,19 +68,23 @@ class PropertyDetailsScreen extends StatelessWidget {
                       ),
                     ],
                   ),
+
                   const SizedBox(height: 10),
                   Text(property.location, style: const TextStyle(color: Colors.grey)),
-                  
+
                   const Divider(height: 40),
 
-                  // 3. Descripción
-                  const Text("Sobre este alojamiento", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  // Descripción
+                  const Text(
+                    "Sobre este alojamiento",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 10),
                   Text(property.description),
 
                   const SizedBox(height: 30),
 
-                  // 4. BOTÓN DINÁMICO (Editar o Contactar)
+                  // 3. Botón dinámico
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -85,19 +93,34 @@ class PropertyDetailsScreen extends StatelessWidget {
                         backgroundColor: primaryRed,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      onPressed: () {
+                      onPressed: () async {
                         if (esPropietario) {
-                          // IR A EDITAR
+                          // PROPIETARIO → EDITAR
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => FormularioAlojamientoScreen(
-                                propertyAEditar: property, // Pasamos el objeto completo
+                                propertyAEditar: property,
                               ),
                             ),
                           );
                         } else {
-                          // LÓGICA DE CONTACTO ESTUDIANTE
+                          // ESTUDIANTE → CONTACTAR
+                          final vm = Provider.of<ChatViewModel>(context, listen: false);
+
+                          // Crear chat si no existe
+                          final chatId = await vm.createChatWith(property.ownerId);
+
+                          // Navegar al chat
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ChatPlantillaScreen(
+                                chatId: chatId,
+                                otherUserId: property.ownerId,
+                              ),
+                            ),
+                          );
                         }
                       },
                       child: Text(

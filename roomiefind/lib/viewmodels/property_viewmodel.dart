@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:roomiefind/models/property_model.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/property_service.dart';
 
 class PropertyViewModel extends ChangeNotifier {
@@ -24,18 +25,25 @@ class PropertyViewModel extends ChangeNotifier {
   // --- MÉTODOS DE CARGA ---
 
   // Obtener todos los alojamientos (Modo Estudiante)
-  Future<void> fetchProperties() async {
-    _setLoading(true);
-    _errorMessage = null;
+Future<void> fetchProperties() async {
+  _setLoading(true);
+  _errorMessage = null;
 
-    try {
-      _allProperties = await _propertyService.getProperties();
-    } catch (e) {
-      _errorMessage = "Error al cargar alojamientos: $e";
-    } finally {
-      _setLoading(false);
-    }
+  try {
+    final userId = Supabase.instance.client.auth.currentUser!.id;
+
+    final all = await _propertyService.getProperties();
+
+    // 🔥 FILTRO: excluir propiedades del usuario actual
+    _allProperties = all.where((p) => p.ownerId != userId).toList();
+
+  } catch (e) {
+    _errorMessage = "Error al cargar alojamientos: $e";
+  } finally {
+    _setLoading(false);
   }
+}
+
 
   // Obtener mis alojamientos (Modo Propietario)
   Future<void> fetchMyProperties(String userId) async {

@@ -14,6 +14,10 @@ class ChatViewModel extends ChangeNotifier {
   List<MessageModel> messages = [];
   bool isLoading = false;
 
+  // Modo selección
+  bool selectionMode = false;
+  Set<String> selectedChats = {};
+
   StreamSubscription<MessageModel>? _messageSubscription;
 
   // -------------------------------------------------------------
@@ -24,7 +28,6 @@ class ChatViewModel extends ChangeNotifier {
     notifyListeners();
 
     final userId = supabase.auth.currentUser!.id;
-
     chats = await _chatService.getChatsForUser(userId);
 
     isLoading = false;
@@ -48,7 +51,6 @@ class ChatViewModel extends ChangeNotifier {
   // Escuchar mensajes en tiempo real
   // -------------------------------------------------------------
   void listenToChat(String chatId) {
-    // Cancelar suscripción previa si existe
     _messageSubscription?.cancel();
 
     _messageSubscription =
@@ -70,7 +72,7 @@ class ChatViewModel extends ChangeNotifier {
   }
 
   // -------------------------------------------------------------
-  // Crear chat si no existe y devolver su ID
+  // Crear chat si no existe
   // -------------------------------------------------------------
   Future<String> createChatWith(String otherUserId) async {
     final myId = supabase.auth.currentUser!.id;
@@ -78,7 +80,57 @@ class ChatViewModel extends ChangeNotifier {
   }
 
   // -------------------------------------------------------------
-  // Limpiar suscripción al cerrar pantalla
+  // MODO SELECCIÓN
+  // -------------------------------------------------------------
+  void toggleSelectionMode() {
+    selectionMode = !selectionMode;
+
+    if (!selectionMode) {
+      selectedChats.clear();
+    }
+
+    notifyListeners();
+  }
+
+  void toggleChatSelection(String chatId) {
+    if (selectedChats.contains(chatId)) {
+      selectedChats.remove(chatId);
+    } else {
+      selectedChats.add(chatId);
+    }
+
+    notifyListeners();
+  }
+
+  // -------------------------------------------------------------
+  // BORRAR CHATS SELECCIONADOS
+  // -------------------------------------------------------------
+  Future<void> deleteSelectedChats() async {
+    isLoading = true;
+    notifyListeners();
+
+    try {
+      for (final chatId in selectedChats) {
+        await supabase.from('messages').delete().eq('chat_id', chatId);
+        await supabase.from('chats').delete().eq('id', chatId);
+      }
+
+      selectedChats.clear();
+      selectionMode = false;
+
+      final userId = supabase.auth.currentUser!.id;
+      chats = await _chatService.getChatsForUser(userId);
+
+    } catch (e) {
+      debugPrint("Error al borrar chats: $e");
+    }
+
+    isLoading = false;
+    notifyListeners();
+  }
+
+  // -------------------------------------------------------------
+  // Limpiar suscripción
   // -------------------------------------------------------------
   @override
   void dispose() {

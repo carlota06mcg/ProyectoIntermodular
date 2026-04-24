@@ -26,6 +26,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AuthViewModel()),
         ChangeNotifierProvider(create: (_) => PropertyViewModel()),
         ChangeNotifierProvider(create: (_) => ChatViewModel()),
+        
         // Nota: Cuando crees el ProfileViewModel, deberás añadirlo aquí debajo
       ],
       child: const MyApp(),

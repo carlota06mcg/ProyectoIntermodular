@@ -9,38 +9,71 @@ class ChatService {
   // -------------------------------------------------------------
   // 1. Crear chat si no existe (entre user1 y user2)
   // -------------------------------------------------------------
-  Future<String> createChatIfNotExists(String user1Id, String user2Id) async {
-    final existing = await supabase
-        .from('chats')
-        .select()
-        .or('user1_id.eq.$user1Id,user2_id.eq.$user2Id')
-        .or('user1_id.eq.$user2Id,user2_id.eq.$user1Id')
-        .maybeSingle();
+Future<String> createChatIfNotExists(String myId, String otherUserId) async {
+  // 1. Obtener mi rol
+  final profile = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', myId)
+      .single();
 
-    if (existing != null) {
-      return existing['id'];
-    }
+  final myRole = profile['role'];
 
-    final newChat = await supabase.from('chats').insert({
-      'user1_id': user1Id,
-      'user2_id': user2Id,
-    }).select().single();
+  String user1; // estudiante
+  String user2; // propietario
 
-    return newChat['id'];
+  // 2. Asignar posiciones según rol
+  if (myRole == 'estudiante') {
+    user1 = myId;
+    user2 = otherUserId;
+  } else {
+    user1 = otherUserId;
+    user2 = myId;
   }
 
-  // -------------------------------------------------------------
-  // 2. Obtener todos los chats del usuario
-  // -------------------------------------------------------------
-  Future<List<ChatModel>> getChatsForUser(String userId) async {
-    final data = await supabase
-        .from('chats')
-        .select()
-        .or('user1_id.eq.$userId,user2_id.eq.$userId')
-        .order('updated_at', ascending: false);
+  // 3. Buscar si ya existe un chat entre ambos
+  final existing = await supabase
+      .from('chats')
+      .select()
+      .or('user1_id.eq.$user1,user2_id.eq.$user2')
+      .maybeSingle();
 
-    return data.map((e) => ChatModel.fromJson(e)).toList();
+  if (existing != null) {
+    return existing['id'];
   }
+
+  // 4. Crear chat nuevo
+  final newChat = await supabase.from('chats').insert({
+    'user1_id': user1,
+    'user2_id': user2,
+  }).select().single();
+
+  return newChat['id'];
+}
+
+// -------------------------------------------------------------
+// 2. Obtener todos los chats del usuario (con nombres y avatares)
+// -------------------------------------------------------------
+Future<List<ChatModel>> getChatsForUser(String userId) async {
+  final data = await supabase
+      .from('chats')
+      .select('''
+        id,
+        user1_id,
+        user2_id,
+        last_message,
+        created_at,
+        updated_at,
+        user1:profiles!chats_user1_id_fkey(full_name, avatar_url),
+        user2:profiles!chats_user2_id_fkey(full_name, avatar_url)
+      ''')
+      .or('user1_id.eq.$userId,user2_id.eq.$userId')
+      .order('updated_at', ascending: false);
+
+  return data.map((e) => ChatModel.fromJson(e)).toList();
+}
+
+
 
   // -------------------------------------------------------------
   // 3. Obtener mensajes de un chat
@@ -97,5 +130,8 @@ Stream<MessageModel> listenToMessages(String chatId) {
 
   return streamController.stream;
 }
+
+
+
 
 }

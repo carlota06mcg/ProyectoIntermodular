@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:roomiefind/models/property_model.dart';
 import 'package:roomiefind/screens/Owner/createAppartment.dart';
 import 'package:provider/provider.dart';
+import 'package:roomiefind/screens/Shared/Property/property_details.dart';
+
 import '../../viewmodels/property_viewmodel.dart';
 
 class PropertyCard extends StatelessWidget {
@@ -14,56 +16,75 @@ class PropertyCard extends StatelessWidget {
     this.esPropietario = false,
   });
 
-  // Método privado para no repetir la lógica de navegación
+  // Navegar a editar (solo propietarios)
   void _navegarAEditor(BuildContext context) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => FormularioAlojamientoScreen(
-          propertyAEditar: property, // Pasamos el piso seleccionado
+          propertyAEditar: property,
         ),
       ),
     );
   }
 
+  // Confirmar eliminación
   void _confirmarEliminacion(BuildContext context) {
-  showDialog(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: const Text("¿Eliminar alojamiento?"),
-      content: const Text("Esta acción no se puede deshacer."),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx),
-          child: const Text("Cancelar"),
-        ),
-        TextButton(
-          onPressed: () async {
-            Navigator.pop(ctx); // Cierra el diálogo
-            final propVM = Provider.of<PropertyViewModel>(context, listen: false);
-            
-            bool ok = await propVM.deleteProperty(property.id!, property.ownerId);
-            
-            if (ok) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Alojamiento eliminado"), backgroundColor: Colors.green),
-              );
-            }
-          },
-          child: const Text("Eliminar", style: TextStyle(color: Colors.red)),
-        ),
-      ],
-    ),
-  );
-}
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("¿Eliminar alojamiento?"),
+        content: const Text("Esta acción no se puede deshacer."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancelar"),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final propVM = Provider.of<PropertyViewModel>(context, listen: false);
+              
+              bool ok = await propVM.deleteProperty(property.id!, property.ownerId);
+              
+              if (ok) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text("Alojamiento eliminado"),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              }
+            },
+            child: const Text("Eliminar", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     const Color customRed = Color(0xFFB02A37);
 
     return GestureDetector(
-      // Hacemos que toda la tarjeta sea clickable si es propietario
-      onTap: esPropietario ? () => _navegarAEditor(context) : null,
+      // 🔥 LÓGICA DE NAVEGACIÓN:
+      // Propietario → editar
+      // Estudiante → ver detalles
+        onTap: () {
+          if (esPropietario) {
+            _navegarAEditor(context);
+          } else {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => PropertyDetailsScreen(property: property),
+              ),
+            );
+          }
+        },
+
+
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
@@ -80,7 +101,7 @@ class PropertyCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // IMAGEN DE LA PROPIEDAD
+            // IMAGEN
             ClipRRect(
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(12),
@@ -104,6 +125,7 @@ class PropertyCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // TIPO + BOTONES PROPIETARIO
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -118,13 +140,11 @@ class PropertyCard extends StatelessWidget {
                         if (esPropietario)
                           Row(
                             children: [
-                              // BOTÓN ELIMINAR
                               IconButton(
                                 icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
                                 onPressed: () => _confirmarEliminacion(context),
                               ),
                               const SizedBox(width: 4),
-                              // TU BOTÓN EDITAR EXISTENTE
                               GestureDetector(
                                 onTap: () => _navegarAEditor(context),
                                 child: Container(
@@ -141,31 +161,50 @@ class PropertyCard extends StatelessWidget {
                               ),
                             ],
                           )
-                        ],
+                      ],
                     ),
+
                     const SizedBox(height: 4),
+
+                    // UBICACIÓN
                     Text(
                       property.location,
                       style: const TextStyle(color: Colors.grey, fontSize: 10),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
+
                     const SizedBox(height: 8),
+
+                    // RATING + PRECIO
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Row(
                           children: [
                             const Icon(Icons.star, color: Colors.orange, size: 14),
-                            Text(" 5.0", style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.grey[700])),
+                            Text(
+                              " 5.0",
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.grey[700],
+                              ),
+                            ),
                           ],
                         ),
                         RichText(
                           text: TextSpan(
                             style: const TextStyle(color: Colors.black, fontSize: 13),
                             children: [
-                              TextSpan(text: "${property.price.toInt()}€", style: const TextStyle(fontWeight: FontWeight.bold)),
-                              const TextSpan(text: "/mes", style: TextStyle(fontSize: 10, color: Colors.grey)),
+                              TextSpan(
+                                text: "${property.price.toInt()}€",
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              const TextSpan(
+                                text: "/mes",
+                                style: TextStyle(fontSize: 10, color: Colors.grey),
+                              ),
                             ],
                           ),
                         ),

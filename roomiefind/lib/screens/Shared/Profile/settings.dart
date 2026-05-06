@@ -2,19 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:roomiefind/viewmodels/auth_viewmodel.dart';
 import 'package:roomiefind/routes/routes.dart';
-import 'package:roomiefind/models/user_model.dart';
+import '../../../models/user_model.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // Escuchamos el ViewModel
+    final authViewModel = context.watch<AuthViewModel>();
+    final user = authViewModel.currentUser;
+
+    // Colores constantes
     const Color primaryColor = Color(0xFFAE2535);
     const Color secondaryIconColor = Color(0xFFC62828);
     const Color secondaryTextColor = Colors.black54;
-
-    final auth = context.watch<AuthViewModel>();
-    final user = auth.currentUser;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -36,32 +38,18 @@ class SettingsScreen extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 40.0),
         child: Column(
           children: [
-            const SizedBox(height: 10),
-
-            // FOTO DE PERFIL
-            Center(
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(100),
-                child: user?.avatarUrl != null
-                    ? Image.network(
-                        user!.avatarUrl!,
-                        height: 120,
-                        width: 120,
-                        fit: BoxFit.cover,
-                      )
-                    : Image.asset(
-                        'assets/images/perfil.png',
-                        height: 120,
-                        width: 120,
-                        fit: BoxFit.cover,
-                      ),
-              ),
-            ),
-            const SizedBox(height: 20),
+            // FOTO DE PERFIL (Ahora recibe la función para editar)
+            _buildAvatar(user, () {
+              // Aquí irá la lógica para elegir foto más adelante
+              print("Seleccionar imagen para el usuario: ${user?.avatarUrl}");
+            }),
+            
+            const SizedBox(height: 15),
 
             // NOMBRE REAL
             Text(
               user?.fullName ?? "Usuario",
+              textAlign: TextAlign.center,
               style: const TextStyle(
                 color: primaryColor,
                 fontSize: 18,
@@ -73,6 +61,7 @@ class SettingsScreen extends StatelessWidget {
             // CORREO REAL
             Text(
               user?.email ?? "correo no disponible",
+              textAlign: TextAlign.center,
               style: const TextStyle(
                 color: secondaryTextColor,
                 fontSize: 14,
@@ -119,32 +108,16 @@ class SettingsScreen extends StatelessWidget {
 
             const SizedBox(height: 40),
 
-            // ============================
             // CAMBIO DE ROL DINÁMICO
-            // ============================
-            if (user?.role == UserRole.estudiante)
+            if (user != null)
               _SettingsActionText(
-                text: 'Cambiar a cuenta de Propietario',
+                text: 'Cambiar a modo ${user.role == UserRole.estudiante ? "Propietario" : "Estudiante"}',
                 onTap: () async {
-                  final ok = await context.read<AuthViewModel>()
-                      .updateUserRole(UserRole.propietario);
-
-                  if (ok && context.mounted) {
-                    Navigator.pushNamedAndRemoveUntil(
-                      context,
-                      AppRoutes.roleSelection,
-                      (_) => false,
-                    );
-                  }
-                },
-              ),
-
-            if (user?.role == UserRole.propietario)
-              _SettingsActionText(
-                text: 'Cambiar a cuenta de Estudiante',
-                onTap: () async {
-                  final ok = await context.read<AuthViewModel>()
-                      .updateUserRole(UserRole.estudiante);
+                  final nuevoRol = user.role == UserRole.estudiante 
+                      ? UserRole.propietario 
+                      : UserRole.estudiante;
+                  
+                  final ok = await authViewModel.updateUserRole(nuevoRol);
 
                   if (ok && context.mounted) {
                     Navigator.pushNamedAndRemoveUntil(
@@ -158,13 +131,11 @@ class SettingsScreen extends StatelessWidget {
 
             const SizedBox(height: 15),
 
-            // ============================
             // CERRAR SESIÓN
-            // ============================
             _SettingsActionText(
               text: 'Cerrar Sesión',
               onTap: () async {
-                await context.read<AuthViewModel>().logout();
+                await authViewModel.logout();
 
                 if (context.mounted) {
                   Navigator.pushNamedAndRemoveUntil(
@@ -182,72 +153,94 @@ class SettingsScreen extends StatelessWidget {
       ),
     );
   }
-}
 
-// TILE
-class _SettingsTile extends StatelessWidget {
-  final IconData icon;
-  final String title;
-
-  const _SettingsTile({
-    Key? key,
-    required this.icon,
-    required this.title,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    const Color secondaryIconColor = Color(0xFFC62828);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12.0),
-      child: Row(
+  // Widget del Avatar corregido
+  Widget _buildAvatar(UserModel? user, VoidCallback onEditPhoto) {
+    const Color primaryColor = Color(0xFFAE2535);
+    
+    return GestureDetector(
+      onTap: onEditPhoto,
+      child: Stack(
+        alignment: Alignment.bottomRight,
         children: [
-          Icon(icon, color: secondaryIconColor, size: 28),
-          const SizedBox(width: 15),
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(
-                color: Colors.black87,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
+          CircleAvatar(
+            radius: 65,
+            backgroundColor: const Color(0xFFEEEEEE),
+            backgroundImage: (user?.avatarUrl != null && user!.avatarUrl!.isNotEmpty)
+                ? NetworkImage(user.avatarUrl!)
+                : null,
+            child: (user?.avatarUrl == null || user!.avatarUrl!.isEmpty)
+                ? const Icon(Icons.person, size: 80, color: Colors.grey)
+                : null,
+          ),
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: Colors.white,
+            child: CircleAvatar(
+              radius: 17,
+              backgroundColor: primaryColor,
+              child: const Icon(Icons.camera_alt, color: Colors.white, size: 18),
             ),
           ),
-          Icon(Icons.arrow_forward_ios_rounded, color: secondaryIconColor, size: 18),
         ],
       ),
     );
   }
 }
 
-// ACCIONES
-class _SettingsActionText extends StatelessWidget {
-  final String text;
-  final VoidCallback? onTap;
+// Widget auxiliar para las filas de ajustes
+class _SettingsTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
 
-  const _SettingsActionText({
-    Key? key,
-    required this.text,
-    this.onTap,
-  }) : super(key: key);
+  const _SettingsTile({required this.icon, required this.title});
 
   @override
   Widget build(BuildContext context) {
-    const Color primaryColor = Color(0xFFAE2535);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12.0),
+      child: Row(
+        children: [
+          Icon(icon, color: const Color(0xFFC62828), size: 24),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                color: Colors.black87,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+        ],
+      ),
+    );
+  }
+}
 
-    return SizedBox(
-      width: double.infinity,
-      child: TextButton(
-        onPressed: onTap,
+// Widget auxiliar para los textos de acción (Cerrar sesión / Cambio de rol)
+class _SettingsActionText extends StatelessWidget {
+  final String text;
+  final VoidCallback onTap;
+
+  const _SettingsActionText({required this.text, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
         child: Text(
           text,
-          textAlign: TextAlign.center,
           style: const TextStyle(
-            color: primaryColor,
+            color: Color(0xFFAE2535),
             fontSize: 16,
             fontWeight: FontWeight.bold,
+            decoration: TextDecoration.underline,
           ),
         ),
       ),

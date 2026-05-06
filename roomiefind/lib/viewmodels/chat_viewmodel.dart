@@ -27,11 +27,17 @@ class ChatViewModel extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
 
-    final userId = supabase.auth.currentUser!.id;
-    chats = await _chatService.getChatsForUser(userId);
-
-    isLoading = false;
-    notifyListeners();
+    try {
+      final userId = supabase.auth.currentUser?.id;
+      if (userId != null) {
+        chats = await _chatService.getChatsForUser(userId);
+      }
+    } catch (e) {
+      debugPrint("Error al cargar chats: $e");
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
   }
 
   // -------------------------------------------------------------
@@ -41,10 +47,14 @@ class ChatViewModel extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
 
-    messages = await _chatService.getMessages(chatId);
-
-    isLoading = false;
-    notifyListeners();
+    try {
+      messages = await _chatService.getMessages(chatId);
+    } catch (e) {
+      debugPrint("Error al cargar mensajes: $e");
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
   }
 
   // -------------------------------------------------------------
@@ -55,8 +65,11 @@ class ChatViewModel extends ChangeNotifier {
 
     _messageSubscription =
         _chatService.listenToMessages(chatId).listen((newMessage) {
-      messages.add(newMessage);
-      notifyListeners();
+      // Evitar duplicados si el mensaje ya está en la lista (por el insert manual)
+      if (!messages.any((m) => m.id == newMessage.id)) {
+        messages.add(newMessage);
+        notifyListeners();
+      }
     });
   }
 
@@ -64,19 +77,38 @@ class ChatViewModel extends ChangeNotifier {
   // Enviar mensaje
   // -------------------------------------------------------------
   Future<void> sendMessage(String chatId, String content) async {
-    final senderId = supabase.auth.currentUser!.id;
+    final senderId = supabase.auth.currentUser?.id;
+    if (senderId == null || content.trim().isEmpty) return;
 
-    if (content.trim().isEmpty) return;
-
-    await _chatService.sendMessage(chatId, senderId, content);
+    try {
+      await _chatService.sendMessage(chatId, senderId, content);
+      // No añadimos el mensaje manualmente aquí porque listenToChat lo hará por nosotros
+    } catch (e) {
+      debugPrint("Error al enviar mensaje: $e");
+    }
   }
 
-  // -------------------------------------------------------------
+// -------------------------------------------------------------
   // Crear chat si no existe
   // -------------------------------------------------------------
   Future<String> createChatWith(String otherUserId) async {
-    final myId = supabase.auth.currentUser!.id;
-    return await _chatService.createChatIfNotExists(myId, otherUserId);
+    try {
+      final myId = supabase.auth.currentUser?.id;
+      if (myId == null) throw Exception("Sesión no iniciada");
+
+      // 1. Llamada al servicio (busca el ID existente o crea uno nuevo)
+      final String chatId = await _chatService.createChatIfNotExists(myId, otherUserId);
+      
+      // 2. Refrescamos la lista de chats para que el usuario lo vea en su bandeja de entrada
+      await loadChats(); 
+      
+      // 3. Devolvemos el ID para que la pantalla de detalles sepa a qué chat navegar
+      return chatId;
+
+    } catch (e) {
+      debugPrint("Error en createChatWith: $e");
+      rethrow;
+    }
   }
 
   // -------------------------------------------------------------
@@ -84,11 +116,9 @@ class ChatViewModel extends ChangeNotifier {
   // -------------------------------------------------------------
   void toggleSelectionMode() {
     selectionMode = !selectionMode;
-
     if (!selectionMode) {
       selectedChats.clear();
     }
-
     notifyListeners();
   }
 
@@ -98,7 +128,6 @@ class ChatViewModel extends ChangeNotifier {
     } else {
       selectedChats.add(chatId);
     }
-
     notifyListeners();
   }
 
@@ -111,6 +140,7 @@ class ChatViewModel extends ChangeNotifier {
 
     try {
       for (final chatId in selectedChats) {
+        // Primero borrar mensajes (FK constraint) y luego el chat
         await supabase.from('messages').delete().eq('chat_id', chatId);
         await supabase.from('chats').delete().eq('id', chatId);
       }
@@ -118,20 +148,18 @@ class ChatViewModel extends ChangeNotifier {
       selectedChats.clear();
       selectionMode = false;
 
-      final userId = supabase.auth.currentUser!.id;
-      chats = await _chatService.getChatsForUser(userId);
-
+      final userId = supabase.auth.currentUser?.id;
+      if (userId != null) {
+        chats = await _chatService.getChatsForUser(userId);
+      }
     } catch (e) {
       debugPrint("Error al borrar chats: $e");
+    } finally {
+      isLoading = false;
+      notifyListeners();
     }
-
-    isLoading = false;
-    notifyListeners();
   }
 
-  // -------------------------------------------------------------
-  // Limpiar suscripción
-  // -------------------------------------------------------------
   @override
   void dispose() {
     _messageSubscription?.cancel();

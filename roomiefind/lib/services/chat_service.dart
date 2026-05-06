@@ -7,73 +7,63 @@ class ChatService {
   final supabase = Supabase.instance.client;
 
   // -------------------------------------------------------------
-  // 1. Crear chat si no existe (entre user1 y user2)
+  // 1. Crear chat si no existe (con lógica de búsqueda mejorada)
   // -------------------------------------------------------------
-Future<String> createChatIfNotExists(String myId, String otherUserId) async {
-  // 1. Obtener mi rol
-  final profile = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', myId)
-      .single();
+  Future<String> createChatIfNotExists(String myId, String otherUserId) async {
+    // 1. Intentamos buscar si ya existe un chat entre ambos en cualquier orden
+    // Esta consulta es más precisa para evitar duplicados
+    final existing = await supabase
+        .from('chats')
+        .select()
+        .or('and(user1_id.eq.$myId,user2_id.eq.$otherUserId),and(user1_id.eq.$otherUserId,user2_id.eq.$myId)')
+        .maybeSingle();
 
-  final myRole = profile['role'];
+    if (existing != null) {
+      return existing['id'];
+    }
 
-  String user1; // estudiante
-  String user2; // propietario
+    // 2. Si no existe, necesitamos saber los roles para mantener tu estructura de user1/user2
+    final profile = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', myId)
+        .single();
 
-  // 2. Asignar posiciones según rol
-  if (myRole == 'estudiante') {
-    user1 = myId;
-    user2 = otherUserId;
-  } else {
-    user1 = otherUserId;
-    user2 = myId;
+    final myRole = profile['role'];
+    String user1 = (myRole == 'estudiante') ? myId : otherUserId;
+    String user2 = (myRole == 'estudiante') ? otherUserId : myId;
+
+    // 3. Crear chat nuevo (aprovechando tus permisos de INSERT en RLS)
+    final newChat = await supabase.from('chats').insert({
+      'user1_id': user1,
+      'user2_id': user2,
+      'last_message': 'Chat iniciado',
+    }).select().single();
+
+    return newChat['id'];
   }
 
-  // 3. Buscar si ya existe un chat entre ambos
-  final existing = await supabase
-      .from('chats')
-      .select()
-      .or('user1_id.eq.$user1,user2_id.eq.$user2')
-      .maybeSingle();
+  // -------------------------------------------------------------
+  // 2. Obtener todos los chats del usuario
+  // -------------------------------------------------------------
+  Future<List<ChatModel>> getChatsForUser(String userId) async {
+    final data = await supabase
+        .from('chats')
+        .select('''
+          id,
+          user1_id,
+          user2_id,
+          last_message,
+          created_at,
+          updated_at,
+          user1:profiles!chats_user1_id_fkey(full_name, avatar_url),
+          user2:profiles!chats_user2_id_fkey(full_name, avatar_url)
+        ''')
+        .or('user1_id.eq.$userId,user2_id.eq.$userId')
+        .order('updated_at', ascending: false);
 
-  if (existing != null) {
-    return existing['id'];
+    return data.map((e) => ChatModel.fromJson(e)).toList();
   }
-
-  // 4. Crear chat nuevo
-  final newChat = await supabase.from('chats').insert({
-    'user1_id': user1,
-    'user2_id': user2,
-  }).select().single();
-
-  return newChat['id'];
-}
-
-// -------------------------------------------------------------
-// 2. Obtener todos los chats del usuario (con nombres y avatares)
-// -------------------------------------------------------------
-Future<List<ChatModel>> getChatsForUser(String userId) async {
-  final data = await supabase
-      .from('chats')
-      .select('''
-        id,
-        user1_id,
-        user2_id,
-        last_message,
-        created_at,
-        updated_at,
-        user1:profiles!chats_user1_id_fkey(full_name, avatar_url),
-        user2:profiles!chats_user2_id_fkey(full_name, avatar_url)
-      ''')
-      .or('user1_id.eq.$userId,user2_id.eq.$userId')
-      .order('updated_at', ascending: false);
-
-  return data.map((e) => ChatModel.fromJson(e)).toList();
-}
-
-
 
   // -------------------------------------------------------------
   // 3. Obtener mensajes de un chat
@@ -92,13 +82,14 @@ Future<List<ChatModel>> getChatsForUser(String userId) async {
   // 4. Enviar mensaje
   // -------------------------------------------------------------
   Future<void> sendMessage(String chatId, String senderId, String content) async {
+    // Insertar el mensaje
     await supabase.from('messages').insert({
       'chat_id': chatId,
       'sender_id': senderId,
       'content': content,
     });
 
-    // Actualizar last_message en chats
+    // Actualizar el último mensaje en la tabla chats (aprovechando tu política UPDATE)
     await supabase.from('chats').update({
       'last_message': content,
       'updated_at': DateTime.now().toIso8601String(),
@@ -108,30 +99,27 @@ Future<List<ChatModel>> getChatsForUser(String userId) async {
   // -------------------------------------------------------------
   // 5. Escuchar mensajes en tiempo real
   // -------------------------------------------------------------
-Stream<MessageModel> listenToMessages(String chatId) {
-  final channel = supabase.channel('messages_channel_$chatId');
+  Stream<MessageModel> listenToMessages(String chatId) {
+    final streamController = StreamController<MessageModel>();
 
-  final streamController = StreamController<MessageModel>();
+    supabase
+        .channel('public:messages:chat_id=eq.$chatId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'messages',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'chat_id',
+            value: chatId,
+          ),
+          callback: (payload) {
+            final newMessage = MessageModel.fromJson(payload.newRecord);
+            streamController.add(newMessage);
+          },
+        )
+        .subscribe();
 
-  channel.onPostgresChanges(
-    event: PostgresChangeEvent.insert,
-    schema: 'public',
-    table: 'messages',
-    filter: PostgresChangeFilter(
-      type: PostgresChangeFilterType.eq,
-      column: 'chat_id',
-      value: chatId,
-    ),
-    callback: (payload) {
-      final newMessage = MessageModel.fromJson(payload.newRecord!);
-      streamController.add(newMessage);
-    },
-  ).subscribe();
-
-  return streamController.stream;
-}
-
-
-
-
+    return streamController.stream;
+  }
 }

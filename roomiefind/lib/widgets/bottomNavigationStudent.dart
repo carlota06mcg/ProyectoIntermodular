@@ -36,14 +36,20 @@ class CustomBottomNavBar extends StatelessWidget {
   }
 
   Widget _buildNavItem(IconData icon, int index) {
-    final isSelected = currentIndex == index;
-    return InkWell(
+  final isSelected = currentIndex == index;
+  
+  return Expanded(
+    child: InkWell(
       onTap: () => onTap(index),
-      child: Icon(
-        icon,
-        size: 28,
-        color: isSelected ? const Color(0xFFAE2535) : const Color(0xFFC9A696),
+      borderRadius: BorderRadius.circular(48),
+      child: Center( 
+        child: Icon(
+          icon,
+          size: 28,
+          color: isSelected ? const Color(0xFFAE2535) : const Color(0xFFC9A696),
+        ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

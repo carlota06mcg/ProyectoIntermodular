@@ -40,18 +40,20 @@ class OwnerBottomNavBar extends StatelessWidget {
   }
 
   Widget _buildNavItem(IconData icon, int index, Color selectedColor, Color unselectedColor) {
-    final isSelected = currentIndex == index;
-    return InkWell(
+  final isSelected = currentIndex == index;
+  
+  return Expanded(
+    child: InkWell(
       onTap: () => onTap(index),
-      borderRadius: BorderRadius.circular(20), // Feedback visual al tocar
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
+      borderRadius: BorderRadius.circular(48),
+      child: Center( 
         child: Icon(
           icon,
           size: 28,
           color: isSelected ? selectedColor : unselectedColor,
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

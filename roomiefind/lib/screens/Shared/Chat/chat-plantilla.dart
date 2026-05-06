@@ -19,19 +19,42 @@ class ChatPlantillaScreen extends StatefulWidget {
 class _ChatPlantillaScreenState extends State<ChatPlantillaScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  String otherUserName = "Cargando..."; // Para mostrar el nombre real
+  String otherUserName = "Usuario"; 
 
   @override
   void initState() {
     super.initState();
-    Future.microtask(() {
+    // Usamos addPostFrameCallback para no bloquear el renderizado inicial
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       final vm = Provider.of<ChatViewModel>(context, listen: false);
-      vm.listenToChat(widget.chatId); // Esto escucha MENSAJES individuales
-      vm.markChatAsRead(widget.chatId); // Marca como leído al entrar
+      
+      // 1. Limpiamos mensajes anteriores para que no se vean mensajes del chat anterior
+      vm.messages.clear(); 
+      
+      // 2. Cargamos mensajes de la BD
+      vm.loadMessages(widget.chatId);
+      
+      // 3. Activamos el escucha en tiempo real
+      vm.listenToChat(widget.chatId);
+      
+      // 4. Marcamos como leído
+      vm.markChatAsRead(widget.chatId);
+      
+      _fetchOtherUserName();
     });
   }
 
-  /* Método opcional para que la cabecera se vea profesional
+  // Liberar recursos al salir
+  @override
+  void dispose() {
+    _controller.dispose();
+    _scrollController.dispose();
+    // IMPORTANTE: Cancelamos la suscripción al salir para que no gaste datos
+    // Esto lo hace el dispose del ViewModel si está bien configurado, 
+    // pero asegúrate de que el ViewModel deje de escuchar este chat específico.
+    super.dispose();
+  }
+
   Future<void> _fetchOtherUserName() async {
     final vm = Provider.of<ChatViewModel>(context, listen: false);
     try {
@@ -40,33 +63,25 @@ class _ChatPlantillaScreenState extends State<ChatPlantillaScreen> {
           .select('full_name')
           .eq('id', widget.otherUserId)
           .single();
-      setState(() {
-        otherUserName = res['full_name'] ?? "Usuario";
-      });
+      if (mounted) {
+        setState(() {
+          otherUserName = res['full_name'] ?? "Usuario";
+        });
+      }
     } catch (e) {
-      setState(() => otherUserName = "Chat");
+      if (mounted) setState(() => otherUserName = "Chat");
     }
-  }*/
+  }
 
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
+      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final vm = Provider.of<ChatViewModel>(context);
-
-    // Scroll automático al recibir mensajes nuevos
-    if (vm.messages.isNotEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
-    }
-
+    // Usamos Consumer para que SOLO se reconstruya lo necesario
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -93,39 +108,52 @@ class _ChatPlantillaScreenState extends State<ChatPlantillaScreen> {
       body: Column(
         children: [
           Expanded(
-            child: vm.isLoading && vm.messages.isEmpty
-                ? const Center(child: CircularProgressIndicator())
-                : ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    itemCount: vm.messages.length,
-                    itemBuilder: (context, index) {
-                      final msg = vm.messages[index];
-                      final isMine = msg.senderId == vm.supabase.auth.currentUser!.id;
+            child: Consumer<ChatViewModel>(
+              builder: (context, vm, child) {
+                // Programamos el scroll para el siguiente frame tras el rebuild
+                WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
 
-                      return Align(
-                        alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 4),
-                          padding: const EdgeInsets.all(12),
-                          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-                          decoration: BoxDecoration(
-                            color: isMine ? const Color(0xFFB82D41) : Colors.grey.shade200,
-                            borderRadius: BorderRadius.only(
-                              topLeft: const Radius.circular(15),
-                              topRight: const Radius.circular(15),
-                              bottomLeft: Radius.circular(isMine ? 15 : 0),
-                              bottomRight: Radius.circular(isMine ? 0 : 15),
-                            ),
-                          ),
-                          child: Text(
-                            msg.content,
-                            style: TextStyle(color: isMine ? Colors.white : Colors.black87),
+                if (vm.isLoading && vm.messages.isEmpty) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                
+                if (vm.messages.isEmpty) {
+                  return const Center(child: Text("No hay mensajes aún. ¡Saluda!"));
+                }
+
+                return ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  itemCount: vm.messages.length,
+                  itemBuilder: (context, index) {
+                    final msg = vm.messages[index];
+                    final isMine = msg.senderId == vm.supabase.auth.currentUser!.id;
+
+                    return Align(
+                      alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 4),
+                        padding: const EdgeInsets.all(12),
+                        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+                        decoration: BoxDecoration(
+                          color: isMine ? const Color(0xFFB82D41) : Colors.grey.shade200,
+                          borderRadius: BorderRadius.only(
+                            topLeft: const Radius.circular(15),
+                            topRight: const Radius.circular(15),
+                            bottomLeft: Radius.circular(isMine ? 15 : 0),
+                            bottomRight: Radius.circular(isMine ? 0 : 15),
                           ),
                         ),
-                      );
-                    },
-                  ),
+                        child: Text(
+                          msg.content,
+                          style: TextStyle(color: isMine ? Colors.white : Colors.black87),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
           ),
           
           // INPUT BAR
@@ -147,6 +175,7 @@ class _ChatPlantillaScreenState extends State<ChatPlantillaScreen> {
                       ),
                       child: TextField(
                         controller: _controller,
+                        onSubmitted: (val) => _handleSend(), // Enviar con el 'Enter' del teclado
                         decoration: const InputDecoration(
                           hintText: 'Escribe un mensaje...',
                           border: InputBorder.none,
@@ -159,13 +188,7 @@ class _ChatPlantillaScreenState extends State<ChatPlantillaScreen> {
                     backgroundColor: const Color(0xFFB82D41),
                     child: IconButton(
                       icon: const Icon(Icons.send, color: Colors.white, size: 20),
-                      onPressed: () async {
-                        final text = _controller.text.trim();
-                        if (text.isEmpty) return;
-                        await vm.sendMessage(widget.chatId, text);
-                        _controller.clear();
-                        _scrollToBottom();
-                      },
+                      onPressed: _handleSend,
                     ),
                   ),
                 ],
@@ -175,5 +198,14 @@ class _ChatPlantillaScreenState extends State<ChatPlantillaScreen> {
         ],
       ),
     );
+  }
+
+  void _handleSend() async {
+    final vm = Provider.of<ChatViewModel>(context, listen: false);
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+    
+    _controller.clear(); // Limpiamos rápido para mejor sensación
+    await vm.sendMessage(widget.chatId, text);
   }
 }

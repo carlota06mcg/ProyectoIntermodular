@@ -60,13 +60,27 @@ class ChatViewModel extends ChangeNotifier {
   // -------------------------------------------------------------
   // Escuchar mensajes en tiempo real
   // -------------------------------------------------------------
+// -------------------------------------------------------------
+  // Escuchar mensajes en tiempo real (con filtro anti-duplicados)
+  // -------------------------------------------------------------
   void listenToChat(String chatId) {
     _messageSubscription?.cancel();
 
     _messageSubscription =
         _chatService.listenToMessages(chatId).listen((newMessage) {
-      // Evitar duplicados si el mensaje ya está en la lista (por el insert manual)
-      if (!messages.any((m) => m.id == newMessage.id)) {
+      
+      // 1. Buscamos si este mensaje ya lo pintamos nosotros mismos como temporal
+      int tempIndex = messages.indexWhere((m) => 
+          m.id.startsWith('temp_') && 
+          m.content == newMessage.content && 
+          m.senderId == newMessage.senderId);
+
+      if (tempIndex != -1) {
+        // Si era nuestro mensaje temporal, lo sustituimos por el oficial (que trae el ID real de Supabase)
+        messages[tempIndex] = newMessage;
+        notifyListeners();
+      } else if (!messages.any((m) => m.id == newMessage.id)) {
+        // Si no es nuestro mensaje temporal y no existe en la lista (ej: nos escribe la otra persona), lo añadimos
         messages.add(newMessage);
         notifyListeners();
       }
@@ -76,14 +90,34 @@ class ChatViewModel extends ChangeNotifier {
   // -------------------------------------------------------------
   // Enviar mensaje
   // -------------------------------------------------------------
+// -------------------------------------------------------------
+  // Enviar mensaje (con Optimistic UI / Mensaje Instantáneo)
+  // -------------------------------------------------------------
   Future<void> sendMessage(String chatId, String content) async {
     final senderId = supabase.auth.currentUser?.id;
     if (senderId == null || content.trim().isEmpty) return;
 
+    // 1. Creamos el mensaje temporal para la interfaz
+    final temporaryMessage = MessageModel(
+      id: 'temp_${DateTime.now().millisecondsSinceEpoch}', // ID reconocible como temporal
+      chatId: chatId,
+      senderId: senderId,
+      content: content,
+      isRead: false, // <-- Resuelto el error del parámetro requerido
+      createdAt: DateTime.now(),
+    );
+
+    // 2. Lo añadimos a la lista local y repintamos la pantalla AL INSTANTE
+    messages.add(temporaryMessage);
+    notifyListeners();
+
     try {
+      // 3. Lo enviamos silenciosamente a Supabase en segundo plano
       await _chatService.sendMessage(chatId, senderId, content);
-      // No añadimos el mensaje manualmente aquí porque listenToChat lo hará por nosotros
     } catch (e) {
+      // Si falla internet o la base de datos, lo borramos de la pantalla
+      messages.removeWhere((m) => m.id == temporaryMessage.id);
+      notifyListeners();
       debugPrint("Error al enviar mensaje: $e");
     }
   }

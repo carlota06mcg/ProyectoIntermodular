@@ -9,35 +9,41 @@ class HistoryScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     const Color primaryColor = Color(0xFFAE2535);
 
-    // 1. LISTA DE PRUEBA TEMPORAL (Para que no de error 'propiedadesPrueba')
-final List<PropertyModel> misPropiedadesHistorial = [
-  PropertyModel(
-    id: "hist_1",
-    ownerId: "1",
-    title: "Habitación en Centro Histórico",
-    type: "Piso compartido",
-    location: "Granada, España",
-    price: 350.0,
-    description: "Excelente ubicación cerca de la catedral.",
-    imageUrls: ["https://via.placeholder.com/150"],
-    transport: {"Bus": true},
-    services: {"Wifi": true, "Agua": true},
-    additionalInfo: {"Mascotas": false},
-  ),
-  PropertyModel(
-    id: "hist_2",
-    ownerId: "2",
-    title: "Estudio Moderno",
-    type: "Estudio",
-    location: "Zaidín, Granada",
-    price: 500.0,
-    description: "Estudio recién reformado.",
-    imageUrls: ["https://via.placeholder.com/150"],
-    transport: {"Metro": true},
-    services: {"Wifi": true},
-    additionalInfo: {},
-  ),
-];
+    // Lista de prueba con el modelo actualizado
+    final List<PropertyModel> misPropiedadesHistorial = [
+      PropertyModel(
+        id: "hist_1",
+        ownerId: "1",
+        title: "Habitación en Centro Histórico",
+        type: "Piso Compartido",
+        streetNameNumber: "Calle Gran Vía, 12",
+        city: "Granada",
+        locality: "Centro",
+        zipCode: "18001",
+        price: 350.0,
+        description: "Excelente ubicación cerca de la catedral.",
+        imageUrls: ["https://picsum.photos/id/1/400/300"],
+        transport: "Líneas de bus 4, 33", 
+        services: {"wifi": true, "agua": true},
+        additionalInfo: {"mascotas": false},
+      ),
+      PropertyModel(
+        id: "hist_2",
+        ownerId: "2",
+        title: "Estudio Moderno",
+        type: "Estudio",
+        streetNameNumber: "Avenida de Italia, 5",
+        city: "Granada",
+        locality: "Zaidín",
+        zipCode: "18007",
+        price: 500.0,
+        description: "Estudio recién reformado.",
+        imageUrls: ["https://picsum.photos/id/2/400/300"],
+        transport: "Metro: Parada Hípica", 
+        services: {"wifi": true},
+        additionalInfo: {},
+      ),
+    ];
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -46,13 +52,14 @@ final List<PropertyModel> misPropiedadesHistorial = [
         elevation: 0,
         centerTitle: true,
         title: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
               "Historial",
               style: TextStyle(
-                color: primaryColor,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
+                color: primaryColor, 
+                fontWeight: FontWeight.bold, 
+                fontSize: 18
               ),
             ),
             Container(
@@ -69,8 +76,8 @@ final List<PropertyModel> misPropiedadesHistorial = [
         itemCount: misPropiedadesHistorial.length, 
         itemBuilder: (context, index) {
           return PropertyCard(
-            property: misPropiedadesHistorial[index], 
-            esPropietario: false, 
+            property: misPropiedadesHistorial[index],
+            esPropietario: false, // Añadido para evitar error de parámetros
           );
         },
       ),

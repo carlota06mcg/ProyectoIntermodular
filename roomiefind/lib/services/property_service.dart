@@ -12,17 +12,16 @@ class PropertyService {
     List<String> urls = [];
 
     for (var i = 0; i < images.length; i++) {
-      final String path = 'properties/$propertyId/img_$i.jpg';
+      final String fileName = '${DateTime.now().millisecondsSinceEpoch}_$i.jpg';
+      final String path = 'properties/$propertyId/$fileName';
 
       await _supabase.storage.from('property_images').upload(
-        path,
-        images[i],
-        fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
-      );
+            path,
+            images[i],
+            fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+          );
 
-      final String url =
-          _supabase.storage.from('property_images').getPublicUrl(path);
-
+      final String url = _supabase.storage.from('property_images').getPublicUrl(path);
       urls.add(url);
     }
 
@@ -32,19 +31,16 @@ class PropertyService {
   // ============================
   // 2. CREAR PROPIEDAD
   // ============================
-  Future<PropertyModel> createProperty(
-      PropertyModel property, List<File> images) async {
+  Future<PropertyModel> createProperty(PropertyModel property, List<File> images) async {
     try {
-      // Insertamos y obtenemos el registro completo
       final response = await _supabase
           .from('properties')
           .insert(property.toJson())
           .select()
           .single();
 
-      final String propertyId = response['id'];
+      final String propertyId = response['id'].toString();
 
-      // Subimos imágenes si existen
       List<String> urls = [];
       if (images.isNotEmpty) {
         urls = await uploadImages(images, propertyId);
@@ -55,12 +51,10 @@ class PropertyService {
             .eq('id', propertyId);
       }
 
-      // Devolvemos el modelo completo
-        return PropertyModel.fromJson({
-          ...response,
-          'imageUrls': urls,
-        });
-
+      return PropertyModel.fromJson({
+        ...response,
+        'imageUrls': urls,
+      });
     } catch (e) {
       print("Error creando propiedad: $e");
       rethrow;
@@ -68,34 +62,27 @@ class PropertyService {
   }
 
   // ============================
-  // 3. OBTENER TODAS LAS PROPIEDADES
+  // 3. OBTENER PROPIEDADES
   // ============================
   Future<List<PropertyModel>> getProperties() async {
     try {
-      final data = await _supabase.from('properties').select('*');
-
-      return (data as List).map((json) {
-        return PropertyModel.fromJson(_normalizeJson(json));
-      }).toList();
+      final data = await _supabase.from('properties').select('*').order('created_at');
+      return (data as List).map((json) => PropertyModel.fromJson(_normalizeJson(json))).toList();
     } catch (e) {
       print("Error obteniendo propiedades: $e");
       return [];
     }
   }
 
-  // ============================
-  // 4. OBTENER PROPIEDADES DEL DUEÑO
-  // ============================
   Future<List<PropertyModel>> getPropertiesByOwner(String userId) async {
     try {
       final response = await _supabase
           .from('properties')
           .select('*')
-          .eq('owner_id', userId);
+          .eq('owner_id', userId)
+          .order('created_at');
 
-      return (response as List).map((json) {
-        return PropertyModel.fromJson(_normalizeJson(json));
-      }).toList();
+      return (response as List).map((json) => PropertyModel.fromJson(_normalizeJson(json))).toList();
     } catch (e) {
       print("Error obteniendo mis propiedades: $e");
       return [];
@@ -103,58 +90,54 @@ class PropertyService {
   }
 
   // ============================
-  // 5. ACTUALIZAR PROPIEDAD
+  // 4. ACTUALIZAR PROPIEDAD
   // ============================
-  Future<void> updateProperty(
-      PropertyModel property, List<File> newImages) async {
-    try {
-      // 1. Actualizamos datos base
+Future<void> updateProperty(PropertyModel property, List<File> newImages) async {
+  try {
+    // Usamos ! porque estamos seguros de que existe un ID para actualizar
+    await _supabase
+        .from('properties')
+        .update(property.toJson())
+        .eq('id', property.id!); // <--- Cambio aquí
+
+    if (newImages.isNotEmpty) {
+      // Usamos ! también aquí
+      final List<String> newUrls = await uploadImages(newImages, property.id!); // <--- Cambio aquí
+      final List<String> allUrls = [...property.imageUrls, ...newUrls];
+
       await _supabase
           .from('properties')
-          .update(property.toJson())
-          .eq('id', property.id);
-
-      // 2. Subimos nuevas imágenes
-      if (newImages.isNotEmpty) {
-        final List<String> newUrls =
-            await uploadImages(newImages, property.id);
-
-        final List<String> allUrls = [...property.imageUrls, ...newUrls];
-
-        await _supabase
-            .from('properties')
-            .update({'imageUrls': allUrls})
-            .eq('id', property.id);
-      }
-    } catch (e) {
-      print("Error actualizando propiedad: $e");
-      rethrow;
+          .update({'imageUrls': allUrls})
+          .eq('id', property.id!); // <--- Cambio aquí
     }
+  } catch (e) {
+    print("Error actualizando propiedad: $e");
+    rethrow;
   }
+}
 
   // ============================
-  // 6. ELIMINAR PROPIEDAD
+  // 5. ELIMINAR PROPIEDAD
   // ============================
-  Future<void> deleteProperty(String propertyId) async {
-    try {
-      await _supabase.from('properties').delete().eq('id', propertyId);
-    } catch (e) {
-      throw Exception("Error al eliminar la propiedad: $e");
-    }
+Future<void> deleteProperty(String propertyId) async {
+  try {
+    // Aquí propertyId ya viene como String (no nulo) desde el ViewModel
+    await _supabase.from('properties').delete().eq('id', propertyId);
+  } catch (e) {
+    throw Exception("Error al eliminar la propiedad: $e");
   }
+}
 
   // ============================
-  // NORMALIZAR JSONB
+  // NORMALIZAR JSON
   // ============================
   Map<String, dynamic> _normalizeJson(Map<String, dynamic> json) {
     return {
       ...json,
       'imageUrls': json['imageUrls'] ?? [],
-      'transport': json['transport'] is List ? {} : json['transport'],
-      'services': json['services'] is List ? {} : json['services'],
-      'additional_info':
-          json['additional_info'] is List ? {} : json['additional_info'],
-
+      'services': json['services'] ?? {},
+      'additional_info': json['additional_info'] ?? {},
+      'transport': json['transport']?.toString() ?? '', 
     };
   }
 }

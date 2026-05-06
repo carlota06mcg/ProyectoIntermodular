@@ -4,12 +4,10 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:roomiefind/models/property_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../../viewmodels/property_viewmodel.dart';
 
 class FormularioAlojamientoScreen extends StatefulWidget {
   final PropertyModel? propertyAEditar;
-
   const FormularioAlojamientoScreen({Key? key, this.propertyAEditar}) : super(key: key);
 
   @override
@@ -17,34 +15,31 @@ class FormularioAlojamientoScreen extends StatefulWidget {
 }
 
 class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScreen> {
-  // --- CONFIGURACIÓN DE ESTILO ---
   final Color primaryRed = const Color(0xFFB02A37);
-  final Color lightRed = const Color(0xFFF8D7DA);
   final Color inputFillColor = const Color(0xFFF5F5F5);
 
-  // --- CONTROLADORES ---
   late TextEditingController _nombreController;
-  late TextEditingController _ubicacionController;
   late TextEditingController _precioController;
-  late TextEditingController _descripcionController;
-  late TextEditingController _fechaController;
+  late TextEditingController _descripcionController; // Controlador para descripción
+  late TextEditingController _calleController;
+  late TextEditingController _ciudadController;
+  late TextEditingController _localidadController;
+  late TextEditingController _cpController;
+  
+  bool _tieneBus = false;
+  bool _tieneTren = false;
 
-  // --- ESTADO ---
   final ImagePicker _picker = ImagePicker();
   List<XFile> _imagenesSeleccionadas = [];
-  
+  String _tipoSeleccionado = 'Piso Compartido';
+  final List<String> _tiposAlojamiento = ['Estudio', 'Piso Compartido', 'Residencia'];
+
   bool get esEdicion => widget.propertyAEditar != null;
 
-  bool tieneAutobus = false;
-  bool tieneMetro = false;
-  bool servHabIndiv = false;
-  bool servAgua = false;
-  bool servLuz = false;
-  bool servWifi = false;
-  bool infoMascotas = false;
-  bool infoFumadores = false;
-  bool infoSoloHyM = false;
-  bool infoCompartido = false;
+  // Estados de servicios
+  bool servAgua = false, servLuz = false, servWifi = false, servCocina = false, servLavadora = false;
+  bool resHabIndiv = false, resHabComp = false, resDesayuno = false, resAlmuerzo = false, resCena = false, resGym = false, resSalas = false;
+  bool infoMascotas = false, infoFumadores = false, infoMixto = false, infoSoloHombres = false, infoSoloMujeres = false;
 
   @override
   void initState() {
@@ -52,101 +47,98 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
     final p = widget.propertyAEditar;
 
     _nombreController = TextEditingController(text: esEdicion ? p!.title : '');
-    _ubicacionController = TextEditingController(text: esEdicion ? p!.location : '');
     _precioController = TextEditingController(text: esEdicion ? p!.price.toString() : '');
-    _descripcionController = TextEditingController(text: esEdicion ? p!.description : '');
-    _fechaController = TextEditingController(text: 'Seleccionar fecha');
+    _descripcionController = TextEditingController(text: esEdicion ? p!.description : ''); // Inicializar
+    _calleController = TextEditingController(text: esEdicion ? p!.streetNameNumber : '');
+    _ciudadController = TextEditingController(text: esEdicion ? p!.city : '');
+    _localidadController = TextEditingController(text: esEdicion ? p!.locality : '');
+    _cpController = TextEditingController(text: esEdicion ? p!.zipCode : '');
+    
+    if (esEdicion && p?.services != null) {
+      _tieneBus = p!.services['transporte_bus'] ?? false;
+      _tieneTren = p!.services['transporte_tren'] ?? false;
+    }
 
     if (esEdicion && p != null) {
-      tieneAutobus = p.transport['autobus'] ?? false;
-      tieneMetro = p.transport['metro'] ?? false;
-      servHabIndiv = p.services['habitacion_individual'] ?? false;
+      _tipoSeleccionado = p.type;
       servAgua = p.services['agua'] ?? false;
       servLuz = p.services['luz'] ?? false;
       servWifi = p.services['wifi'] ?? false;
+      servCocina = p.services['cocina'] ?? false;
+      servLavadora = p.services['lavadora'] ?? false;
+      resHabIndiv = p.services['hab_individual'] ?? false;
+      resHabComp = p.services['hab_compartida'] ?? false;
+      resDesayuno = p.services['desayuno'] ?? false;
+      resAlmuerzo = p.services['almuerzo'] ?? false;
+      resCena = p.services['cena'] ?? false;
+      resGym = p.services['gym'] ?? false;
+      resSalas = p.services['salas_estudio'] ?? false;
       infoMascotas = p.additionalInfo['mascotas'] ?? false;
       infoFumadores = p.additionalInfo['fumadores'] ?? false;
-      infoSoloHyM = p.additionalInfo['solo_hombres_mujeres'] ?? false;
-      infoCompartido = p.additionalInfo['compartido'] ?? false;
+      infoMixto = p.additionalInfo['mixto'] ?? false;
+      infoSoloHombres = p.additionalInfo['solo_hombres'] ?? false;
+      infoSoloMujeres = p.additionalInfo['solo_mujeres'] ?? false;
     }
   }
 
   @override
   void dispose() {
     _nombreController.dispose();
-    _ubicacionController.dispose();
     _precioController.dispose();
-    _descripcionController.dispose();
-    _fechaController.dispose();
+    _descripcionController.dispose(); // Dispose
+    _calleController.dispose();
+    _ciudadController.dispose();
+    _localidadController.dispose();
+    _cpController.dispose();
     super.dispose();
-  }
-
-  Future<void> _seleccionarFotos() async {
-    final List<XFile> imagenes = await _picker.pickMultiImage();
-    if (imagenes.isNotEmpty) {
-      setState(() => _imagenesSeleccionadas.addAll(imagenes));
-    }
   }
 
   Future<void> _procesarFormulario() async {
     final propVM = Provider.of<PropertyViewModel>(context, listen: false);
     final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
 
-    if (user == null) {
-      _showSnackBar("Debes iniciar sesión para publicar", Colors.red);
-      return;
-    }
+    List<String> transporteSeleccionado = [];
+    if (_tieneBus) transporteSeleccionado.add("Bus");
+    if (_tieneTren) transporteSeleccionado.add("Tren/Metro");
+    String transportString = transporteSeleccionado.isEmpty ? "Ninguno" : transporteSeleccionado.join(", ");
 
-    if (_nombreController.text.isEmpty || _precioController.text.isEmpty) {
-      _showSnackBar("Rellena los campos obligatorios", Colors.orange);
-      return;
-    }
+    final propiedadData = PropertyModel(
+      id: esEdicion ? widget.propertyAEditar!.id : null,
+      ownerId: user.id,
+      title: _nombreController.text,
+      type: _tipoSeleccionado,
+      streetNameNumber: _calleController.text,
+      city: _ciudadController.text,
+      locality: _localidadController.text,
+      zipCode: _cpController.text,
+      price: double.tryParse(_precioController.text) ?? 0.0,
+      description: _descripcionController.text, // Guardar descripción
+      imageUrls: esEdicion ? widget.propertyAEditar!.imageUrls : [],
+      transport: transportString, 
+      services: _tipoSeleccionado == 'Residencia' 
+        ? {
+            "cocina": servCocina,
+            "transporte_bus": _tieneBus,
+            "transporte_tren": _tieneTren,
+            "hab_individual": resHabIndiv, "hab_compartida": resHabComp, 
+            "desayuno": resDesayuno, "almuerzo": resAlmuerzo, 
+            "cena": resCena, "gym": resGym, "salas_estudio": resSalas
+          }
+        : {
+            "agua": servAgua, "luz": servLuz, "wifi": servWifi, 
+            "cocina": servCocina, "lavadora": servLavadora,
+            "transporte_bus": _tieneBus,
+            "transporte_tren": _tieneTren,
+          },
+      additionalInfo: {"mascotas": infoMascotas, "fumadores": infoFumadores, "mixto": infoMixto, "solo_hombres": infoSoloHombres, "solo_mujeres": infoSoloMujeres},
+    );
 
-final propiedadData = PropertyModel(
-  id: esEdicion
-      ? widget.propertyAEditar!.id
-      : "temp_${DateTime.now().millisecondsSinceEpoch}",
-  ownerId: user.id,
-  title: _nombreController.text,
-  type: "Piso de Estudiantes",
-  location: _ubicacionController.text,
-  price: double.tryParse(_precioController.text) ?? 0.0,
-  description: _descripcionController.text,
-  imageUrls: esEdicion ? widget.propertyAEditar!.imageUrls : [],
-  transport: {"autobus": tieneAutobus, "metro": tieneMetro},
-  services: {
-    "habitacion_individual": servHabIndiv,
-    "agua": servAgua,
-    "luz": servLuz,
-    "wifi": servWifi,
-  },
-  additionalInfo: {
-    "mascotas": infoMascotas,
-    "fumadores": infoFumadores,
-    "solo_hombres_mujeres": infoSoloHyM,
-    "compartido": infoCompartido,
-  },
-  availableDate: DateTime.now(),
-);
+    bool exito = esEdicion 
+        ? await propVM.updateProperty(propiedadData, _imagenesSeleccionadas)
+        : await propVM.publishProperty(propiedadData, _imagenesSeleccionadas);
 
-
-    bool exito;
-    if (esEdicion) {
-      exito = await propVM.updateProperty(propiedadData, _imagenesSeleccionadas);
-    } else {
-      exito = await propVM.publishProperty(propiedadData, _imagenesSeleccionadas);
-    }
-
-    if (exito && mounted) {
-      _showSnackBar(esEdicion ? "¡Actualizado!" : "¡Publicado!", Colors.green);
-      Navigator.pop(context);
-    } else if (mounted) {
-      _showSnackBar(propVM.errorMessage ?? "Error al guardar", Colors.red);
-    }
-  }
-
-  void _showSnackBar(String m, Color c) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(m), backgroundColor: c));
+    if (exito && mounted) Navigator.pop(context);
   }
 
   @override
@@ -158,10 +150,9 @@ final propiedadData = PropertyModel(
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        leading: IconButton(icon: Icon(Icons.arrow_back, color: primaryRed), onPressed: () => Navigator.pop(context)),
-        title: Text(esEdicion ? "Editar Alojamiento" : "Nuevo Alojamiento",
-            style: TextStyle(color: primaryRed, fontWeight: FontWeight.bold)),
-        centerTitle: true,
+        iconTheme: IconThemeData(color: primaryRed),
+        title: Text(esEdicion ? "Editar" : "Nuevo Alojamiento", 
+          style: TextStyle(color: primaryRed, fontWeight: FontWeight.bold)),
       ),
       body: isLoading
           ? Center(child: CircularProgressIndicator(color: primaryRed))
@@ -171,141 +162,159 @@ final propiedadData = PropertyModel(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildLabel("Nombre del alojamiento"),
-                  _buildTextField(_nombreController, "Ej: Apartamento luminoso"),
-                  _buildLabel("Ubicación"),
-                  _buildTextField(_ubicacionController, "Calle, Número, Ciudad"),
-                  _buildLabel("Precio mensual"),
-                  _buildTextField(_precioController, "€000", isNumber: true),
-                  _buildLabel("Descripción"),
-                  _buildTextArea(_descripcionController, "Cuéntanos más..."),
+                  _buildTextField(_nombreController, "Ej: Mi estudio centro"),
                   
-                  _buildLabel("Transporte cercano"),
+                  _buildLabel("Tipo de Alojamiento"),
+                  DropdownButtonFormField<String>(
+                    value: _tipoSeleccionado,
+                    decoration: InputDecoration(filled: true, fillColor: inputFillColor, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
+                    items: _tiposAlojamiento.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
+                    onChanged: (val) => setState(() => _tipoSeleccionado = val!),
+                  ),
+
+                  _buildLabel("Ubicación"),
+                  _buildTextField(_calleController, "Calle y número"),
+                  const SizedBox(height: 10),
                   Row(
                     children: [
-                      _buildTransportIcon(Icons.directions_bus, "Autobús", tieneAutobus, (v) => setState(() => tieneAutobus = v)),
-                      const SizedBox(width: 30),
-                      _buildTransportIcon(Icons.directions_subway, "Metro", tieneMetro, (v) => setState(() => tieneMetro = v)),
+                      Expanded(child: _buildTextField(_ciudadController, "Ciudad")),
+                      const SizedBox(width: 10),
+                      Expanded(child: _buildTextField(_localidadController, "Localidad")),
                     ],
+                  ),
+                  const SizedBox(height: 10),
+                  _buildTextField(_cpController, "Código Postal", isNumber: true),
+
+                  _buildLabel("Precio mensual"),
+                  _buildTextField(_precioController, "€", isNumber: true),
+
+                  // --- NUEVO CAMPO DESCRIPCIÓN ---
+                  _buildLabel("Descripción del alojamiento"),
+                  _buildTextField(
+                    _descripcionController, 
+                    "Cuéntanos más sobre el alojamiento, normas, ambiente...", 
+                    maxLines: 5
+                  ),
+
+                  _buildLabel("Transporte cercano"),
+                  SwitchListTile(
+                    title: const Text("Autobús"),
+                    secondary: Icon(Icons.directions_bus, color: _tieneBus ? primaryRed : Colors.grey),
+                    value: _tieneBus,
+                    activeColor: primaryRed,
+                    contentPadding: EdgeInsets.zero,
+                    onChanged: (bool value) => setState(() => _tieneBus = value),
+                  ),
+                  SwitchListTile(
+                    title: const Text("Tren / Metro"),
+                    secondary: Icon(Icons.train, color: _tieneTren ? primaryRed : Colors.grey),
+                    value: _tieneTren,
+                    activeColor: primaryRed,
+                    contentPadding: EdgeInsets.zero,
+                    onChanged: (bool value) => setState(() => _tieneTren = value),
                   ),
 
                   _buildLabel("Fotos"),
-                  _buildPhotoSection(),
+                  _buildPhotoGrid(),
 
-                  const SizedBox(height: 20),
                   _buildLabel("Servicios Incluidos"),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        _buildServiceItem(Icons.bed, "Hab. Individual", servHabIndiv, () => setState(() => servHabIndiv = !servHabIndiv)),
-                        _buildServiceItem(Icons.opacity, "Agua", servAgua, () => setState(() => servAgua = !servAgua)),
-                        _buildServiceItem(Icons.whatshot, "Luz", servLuz, () => setState(() => servLuz = !servLuz)),
-                        _buildServiceItem(Icons.wifi, "WiFi", servWifi, () => setState(() => servWifi = !servWifi)),
-                      ],
-                    ),
-                  ),
+                  _buildDynamicServices(),
 
                   _buildLabel("Información Adicional"),
-                  _buildCheckboxItem("Mascotas", infoMascotas, (v) => setState(() => infoMascotas = v!)),
-                  _buildCheckboxItem("Apto fumadores", infoFumadores, (v) => setState(() => infoFumadores = v!)),
-                  _buildCheckboxItem("Solo hombres/mujeres", infoSoloHyM, (v) => setState(() => infoSoloHyM = v!)),
-                  _buildCheckboxItem("Compartido", infoCompartido, (v) => setState(() => infoCompartido = v!)),
+                  _buildInfoChecks(),
 
                   const SizedBox(height: 40),
-                  Row(
-                    children: [
-                      Expanded(child: _buildActionButton(esEdicion ? "Guardar" : "Confirmar", primaryRed, Colors.white, _procesarFormulario)),
-                      const SizedBox(width: 15),
-                      Expanded(child: _buildActionButton("Cancelar", lightRed, primaryRed, () => Navigator.pop(context))),
-                    ],
-                  ),
+                  _buildActionButton(esEdicion ? "Guardar Cambios" : "Publicar", primaryRed, Colors.white, _procesarFormulario),
                 ],
               ),
             ),
     );
   }
 
-  // --- WIDGETS AUXILIARES ---
-  Widget _buildLabel(String text) => Padding(
-    padding: const EdgeInsets.only(top: 20, bottom: 8),
-    child: Text("$text *", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-  );
+  Widget _buildLabel(String text) => Padding(padding: const EdgeInsets.only(top: 20, bottom: 8), child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold)));
 
-  Widget _buildTextField(TextEditingController controller, String hint, {bool isNumber = false}) => TextField(
-    controller: controller,
-    keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+  // Modificado para soportar multilínea
+  Widget _buildTextField(TextEditingController controller, String hint, {bool isNumber = false, int maxLines = 1}) => TextField(
+    controller: controller, 
+    keyboardType: isNumber ? TextInputType.number : (maxLines > 1 ? TextInputType.multiline : TextInputType.text),
+    maxLines: maxLines,
     decoration: InputDecoration(
-      hintText: hint, filled: true, fillColor: inputFillColor,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      hintText: hint, 
+      filled: true, 
+      fillColor: inputFillColor, 
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)
     ),
   );
 
-  Widget _buildTextArea(TextEditingController controller, String hint) => TextField(
-    controller: controller, maxLines: 4,
-    decoration: InputDecoration(
-      hintText: hint, filled: true, fillColor: inputFillColor,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-    ),
-  );
+  Widget _buildDynamicServices() {
+    bool isRes = _tipoSeleccionado == 'Residencia';
+    return Wrap(
+      spacing: 8,
+      children: [
+        FilterChip(
+          label: const Text("Cocina"), 
+          selected: servCocina, 
+          onSelected: (v) => setState(() => servCocina = v),
+          selectedColor: primaryRed.withOpacity(0.2),
+        ),
+        if (isRes) ...[
+          FilterChip(label: const Text("Hab. Individual"), selected: resHabIndiv, onSelected: (v) => setState(() { resHabIndiv = v; if(v) resHabComp = false; })),
+          FilterChip(label: const Text("Hab. Compartida"), selected: resHabComp, onSelected: (v) => setState(() { resHabComp = v; if(v) resHabIndiv = false; })),
+          FilterChip(label: const Text("Desayuno"), selected: resDesayuno, onSelected: (v) => setState(() => resDesayuno = v)),
+          FilterChip(label: const Text("Almuerzo"), selected: resAlmuerzo, onSelected: (v) => setState(() => resAlmuerzo = v)),
+          FilterChip(label: const Text("Gym"), selected: resGym, onSelected: (v) => setState(() => resGym = v)),
+        ] else ...[
+          FilterChip(label: const Text("Agua"), selected: servAgua, onSelected: (v) => setState(() => servAgua = v)),
+          FilterChip(label: const Text("Luz"), selected: servLuz, onSelected: (v) => setState(() => servLuz = v)),
+          FilterChip(label: const Text("WiFi"), selected: servWifi, onSelected: (v) => setState(() => servWifi = v)),
+          FilterChip(label: const Text("Lavadora"), selected: servLavadora, onSelected: (v) => setState(() => servLavadora = v)),
+        ],
+      ],
+    );
+  }
 
-  Widget _buildTransportIcon(IconData icon, String label, bool isSelected, Function(bool) onChanged) => Column(
-    children: [
-      Icon(icon, color: isSelected ? primaryRed : Colors.grey),
-      Text(label, style: const TextStyle(fontSize: 10)),
-      Switch(value: isSelected, onChanged: onChanged, activeColor: primaryRed),
-    ],
-  );
-
-  Widget _buildPhotoSection() {
+  Widget _buildInfoChecks() {
     return Column(
       children: [
-        GestureDetector(
-          onTap: _seleccionarFotos,
-          child: Container(
-            height: 120, width: double.infinity,
-            decoration: BoxDecoration(color: inputFillColor, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade300)),
-            child: const Icon(Icons.add_a_photo, color: Colors.grey, size: 40),
-          ),
-        ),
+        CheckboxListTile(title: const Text("Acepta Mascotas"), value: infoMascotas, onChanged: (v) => setState(() => infoMascotas = v!), activeColor: primaryRed),
+        CheckboxListTile(title: const Text("Apto Fumadores"), value: infoFumadores, onChanged: (v) => setState(() => infoFumadores = v!), activeColor: primaryRed),
+        CheckboxListTile(title: const Text("Mixto"), value: infoMixto, onChanged: (v) => setState(() { 
+          infoMixto = v!; if(v) { infoSoloHombres = false; infoSoloMujeres = false; } 
+        }), activeColor: primaryRed),
+        CheckboxListTile(title: const Text("Solo Hombres"), value: infoSoloHombres, onChanged: (v) => setState(() { 
+          infoSoloHombres = v!; if(v) { infoSoloMujeres = false; infoMixto = false; } 
+        }), activeColor: primaryRed),
+        CheckboxListTile(title: const Text("Solo Mujeres"), value: infoSoloMujeres, onChanged: (v) => setState(() { 
+          infoSoloMujeres = v!; if(v) { infoSoloHombres = false; infoMixto = false; } 
+        }), activeColor: primaryRed),
+      ],
+    );
+  }
+
+  Widget _buildPhotoGrid() {
+    return Column(
+      children: [
+        ElevatedButton.icon(onPressed: () async {
+          final List<XFile> imagenes = await _picker.pickMultiImage();
+          if (imagenes.isNotEmpty) setState(() => _imagenesSeleccionadas.addAll(imagenes));
+        }, icon: const Icon(Icons.add_a_photo), label: const Text("Añadir Fotos")),
+        const SizedBox(height: 10),
         if (_imagenesSeleccionadas.isNotEmpty)
-          Container(
-            height: 80, margin: const EdgeInsets.only(top: 10),
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: _imagenesSeleccionadas.length,
-              itemBuilder: (ctx, i) => Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.file(File(_imagenesSeleccionadas[i].path), width: 80, height: 80, fit: BoxFit.cover),
-                ),
-              ),
+          GridView.builder(
+            shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 8, mainAxisSpacing: 8),
+            itemCount: _imagenesSeleccionadas.length,
+            itemBuilder: (ctx, i) => Stack(
+              fit: StackFit.expand,
+              children: [
+                ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.file(File(_imagenesSeleccionadas[i].path), fit: BoxFit.cover)),
+                Positioned(right: 0, top: 0, child: IconButton(icon: const CircleAvatar(backgroundColor: Colors.red, radius: 10, child: Icon(Icons.close, size: 12, color: Colors.white)), onPressed: () => setState(() => _imagenesSeleccionadas.removeAt(i)))),
+              ],
             ),
           ),
       ],
     );
   }
 
-  Widget _buildServiceItem(IconData icon, String label, bool isSelected, VoidCallback onTap) => GestureDetector(
-    onTap: onTap,
-    child: Container(
-      margin: const EdgeInsets.only(right: 10), padding: const EdgeInsets.all(10), width: 90,
-      decoration: BoxDecoration(
-        color: isSelected ? lightRed : Colors.white,
-        border: Border.all(color: isSelected ? primaryRed : Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(children: [Icon(icon, color: primaryRed, size: 20), Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 9))]),
-    ),
-  );
-
-  Widget _buildCheckboxItem(String title, bool value, Function(bool?) onChanged) => CheckboxListTile(
-    title: Text(title, style: const TextStyle(fontSize: 13)), value: value, onChanged: onChanged,
-    activeColor: primaryRed, dense: true, contentPadding: EdgeInsets.zero,
-  );
-
-  Widget _buildActionButton(String text, Color bg, Color txt, VoidCallback onPres) => ElevatedButton(
-    style: ElevatedButton.styleFrom(backgroundColor: bg, foregroundColor: txt, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(vertical: 15)),
-    onPressed: onPres, child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold)),
-  );
+  Widget _buildActionButton(String text, Color bg, Color txt, VoidCallback onPres) => SizedBox(width: double.infinity, child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: bg, foregroundColor: txt, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(vertical: 15)), onPressed: onPres, child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold))));
 }

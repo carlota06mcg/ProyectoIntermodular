@@ -192,7 +192,7 @@ Widget _buildViewMode(UserModel user) {
                       children: propVM.myProperties
                           .map((p) => Padding(
                                 padding: const EdgeInsets.only(bottom: 15),
-                                child: Text(p.location, style: const TextStyle(fontSize: 14)),
+                                child: Text(p.streetNameNumber, style: const TextStyle(fontSize: 14)),
                               ))
                           .toList(),
                     ),
@@ -297,7 +297,7 @@ Widget _buildEditMode(UserModel user) {
                   children: propVM.myProperties
                       .map((p) => Padding(
                             padding: const EdgeInsets.only(bottom: 10),
-                            child: Text(p.location, style: const TextStyle(fontSize: 14)),
+                            child: Text(p.streetNameNumber, style: const TextStyle(fontSize: 14)),
                           ))
                       .toList(),
                 ),

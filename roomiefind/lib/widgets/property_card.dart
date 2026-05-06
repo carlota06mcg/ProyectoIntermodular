@@ -3,7 +3,6 @@ import 'package:roomiefind/models/property_model.dart';
 import 'package:roomiefind/screens/Owner/createAppartment.dart';
 import 'package:provider/provider.dart';
 import 'package:roomiefind/screens/Shared/Property/property_details.dart';
-
 import '../../viewmodels/property_viewmodel.dart';
 
 class PropertyCard extends StatelessWidget {
@@ -16,7 +15,6 @@ class PropertyCard extends StatelessWidget {
     this.esPropietario = false,
   });
 
-  // Navegar a editar (solo propietarios)
   void _navegarAEditor(BuildContext context) {
     Navigator.push(
       context,
@@ -28,7 +26,6 @@ class PropertyCard extends StatelessWidget {
     );
   }
 
-  // Confirmar eliminación
   void _confirmarEliminacion(BuildContext context) {
     showDialog(
       context: context,
@@ -45,15 +42,18 @@ class PropertyCard extends StatelessWidget {
               Navigator.pop(ctx);
               final propVM = Provider.of<PropertyViewModel>(context, listen: false);
               
-              bool ok = await propVM.deleteProperty(property.id!, property.ownerId);
-              
-              if (ok) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text("Alojamiento eliminado"),
-                    backgroundColor: Colors.green,
-                  ),
-                );
+              // Usamos el ! porque el ID debe existir para eliminar
+              if (property.id != null) {
+                bool ok = await propVM.deleteProperty(property.id!, property.ownerId);
+                
+                if (ok && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Alojamiento eliminado"),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
               }
             },
             child: const Text("Eliminar", style: TextStyle(color: Colors.red)),
@@ -68,23 +68,18 @@ class PropertyCard extends StatelessWidget {
     const Color customRed = Color(0xFFB02A37);
 
     return GestureDetector(
-      // 🔥 LÓGICA DE NAVEGACIÓN:
-      // Propietario → editar
-      // Estudiante → ver detalles
-        onTap: () {
-          if (esPropietario) {
-            _navegarAEditor(context);
-          } else {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => PropertyDetailsScreen(property: property),
-              ),
-            );
-          }
-        },
-
-
+      onTap: () {
+        if (esPropietario) {
+          _navegarAEditor(context);
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => PropertyDetailsScreen(property: property),
+            ),
+          );
+        }
+      },
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
@@ -101,7 +96,7 @@ class PropertyCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // IMAGEN
+            // --- IMAGEN ---
             ClipRRect(
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(12),
@@ -118,21 +113,20 @@ class PropertyCard extends StatelessWidget {
                   : _imagePlaceholder(),
             ),
 
-            // DETALLES
+            // --- DETALLES ---
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(12.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // TIPO + BOTONES PROPIETARIO
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
                           property.type.toUpperCase(),
                           style: const TextStyle(
-                            color: Colors.grey,
+                            color: customRed,
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                           ),
@@ -141,61 +135,54 @@ class PropertyCard extends StatelessWidget {
                           Row(
                             children: [
                               IconButton(
+                                constraints: const BoxConstraints(),
+                                padding: EdgeInsets.zero,
                                 icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
                                 onPressed: () => _confirmarEliminacion(context),
                               ),
-                              const SizedBox(width: 4),
-                              GestureDetector(
-                                onTap: () => _navegarAEditor(context),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    border: Border.all(color: Colors.grey.shade300),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: const Text(
-                                    "Editar",
-                                    style: TextStyle(fontSize: 10, color: Colors.black54),
-                                  ),
-                                ),
-                              ),
+                              const SizedBox(width: 8),
+                              const Icon(Icons.edit_note, color: Colors.black54, size: 20),
                             ],
                           )
                       ],
                     ),
 
                     const SizedBox(height: 4),
-
-                    // UBICACIÓN
+                    
                     Text(
-                      property.location,
-                      style: const TextStyle(color: Colors.grey, fontSize: 10),
+                      property.title,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+
+                    // UBICACIÓN CORREGIDA
+                    Text(
+                      "${property.city}, ${property.locality}",
+                      style: const TextStyle(color: Colors.grey, fontSize: 11),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
 
                     const SizedBox(height: 8),
 
-                    // RATING + PRECIO
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.star, color: Colors.orange, size: 14),
-                            Text(
-                              " 5.0",
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.grey[700],
-                              ),
-                            ),
-                          ],
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withOpacity(0.1), 
+                            borderRadius: BorderRadius.circular(4)
+                          ),
+                          child: const Text(
+                            "Disponible", 
+                            style: TextStyle(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold)
+                          ),
                         ),
                         RichText(
                           text: TextSpan(
-                            style: const TextStyle(color: Colors.black, fontSize: 13),
+                            style: const TextStyle(color: Colors.black, fontSize: 14),
                             children: [
                               TextSpan(
                                 text: "${property.price.toInt()}€",

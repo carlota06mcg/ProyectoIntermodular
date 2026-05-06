@@ -2,14 +2,19 @@ class ChatModel {
   final String id;
   final String user1Id;
   final String user2Id;
-  final String? lastMessage;
+  String? lastMessage;
+  
+  // Nuevas propiedades para la lógica mensaje recibido/no leído
+  String? lastMessageSenderId; 
+  bool lastMessageRead;        
+
   final DateTime createdAt;
   final DateTime updatedAt;
-
-  // NUEVOS CAMPOS PARA MOSTRAR NOMBRE Y AVATAR
+  
+  // Estas se quedan igual porque lo usamos otras pantallas
   final String? user1Name;
-  final String? user2Name;
   final String? user1Avatar;
+  final String? user2Name;
   final String? user2Avatar;
 
   ChatModel({
@@ -17,39 +22,39 @@ class ChatModel {
     required this.user1Id,
     required this.user2Id,
     this.lastMessage,
+    this.lastMessageSenderId,         
+    this.lastMessageRead = true,      
     required this.createdAt,
     required this.updatedAt,
     this.user1Name,
-    this.user2Name,
     this.user1Avatar,
+    this.user2Name,
     this.user2Avatar,
   });
 
   factory ChatModel.fromJson(Map<String, dynamic> json) {
+    // lógica de mapeo de perfiles
+    final user1 = json['user1'] as Map<String, dynamic>?;
+    final user2 = json['user2'] as Map<String, dynamic>?;
+
     return ChatModel(
       id: json['id'],
       user1Id: json['user1_id'],
       user2Id: json['user2_id'],
       lastMessage: json['last_message'],
+      
+      // Leemos los nuevos campos de Supabase
+      lastMessageSenderId: json['last_message_sender_id'],
+      lastMessageRead: json['last_message_read'] ?? true,
+
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
-
-      // CAMPOS DEL JOIN CON PROFILES
-      user1Name: json['user1']?['full_name'],
-      user2Name: json['user2']?['full_name'],
-      user1Avatar: json['user1']?['avatar_url'],
-      user2Avatar: json['user2']?['avatar_url'],
+      
+      // Mantenemos los datos de perfiles que usan tus otras páginas
+      user1Name: user1?['full_name'],
+      user1Avatar: user1?['avatar_url'],
+      user2Name: user2?['full_name'],
+      user2Avatar: user2?['avatar_url'],
     );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'user1_id': user1Id,
-      'user2_id': user2Id,
-      'last_message': lastMessage,
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
-    };
   }
 }

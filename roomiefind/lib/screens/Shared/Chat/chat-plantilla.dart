@@ -24,16 +24,14 @@ class _ChatPlantillaScreenState extends State<ChatPlantillaScreen> {
   @override
   void initState() {
     super.initState();
-    // Usamos addPostFrameCallback para evitar errores de contexto al iniciar
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    Future.microtask(() {
       final vm = Provider.of<ChatViewModel>(context, listen: false);
-      vm.loadMessages(widget.chatId);
-      vm.listenToChat(widget.chatId);
-      _fetchOtherUserName(); // Buscamos el nombre del otro usuario
+      vm.listenToChat(widget.chatId); // Esto escucha MENSAJES individuales
+      vm.markChatAsRead(widget.chatId); // Marca como leído al entrar
     });
   }
 
-  // Método opcional para que la cabecera se vea profesional
+  /* Método opcional para que la cabecera se vea profesional
   Future<void> _fetchOtherUserName() async {
     final vm = Provider.of<ChatViewModel>(context, listen: false);
     try {
@@ -48,7 +46,7 @@ class _ChatPlantillaScreenState extends State<ChatPlantillaScreen> {
     } catch (e) {
       setState(() => otherUserName = "Chat");
     }
-  }
+  }*/
 
   void _scrollToBottom() {
     if (_scrollController.hasClients) {

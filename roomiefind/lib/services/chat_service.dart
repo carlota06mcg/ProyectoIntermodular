@@ -7,11 +7,9 @@ class ChatService {
   final supabase = Supabase.instance.client;
 
   // -------------------------------------------------------------
-  // 1. Crear chat si no existe (con lógica de búsqueda mejorada)
+  // 1. Crear chat si no existe
   // -------------------------------------------------------------
   Future<String> createChatIfNotExists(String myId, String otherUserId) async {
-    // 1. Intentamos buscar si ya existe un chat entre ambos en cualquier orden
-    // Esta consulta es más precisa para evitar duplicados
     final existing = await supabase
         .from('chats')
         .select()
@@ -22,7 +20,6 @@ class ChatService {
       return existing['id'];
     }
 
-    // 2. Si no existe, necesitamos saber los roles para mantener tu estructura de user1/user2
     final profile = await supabase
         .from('profiles')
         .select('role')
@@ -33,18 +30,18 @@ class ChatService {
     String user1 = (myRole == 'estudiante') ? myId : otherUserId;
     String user2 = (myRole == 'estudiante') ? otherUserId : myId;
 
-    // 3. Crear chat nuevo (aprovechando tus permisos de INSERT en RLS)
     final newChat = await supabase.from('chats').insert({
       'user1_id': user1,
       'user2_id': user2,
       'last_message': 'Chat iniciado',
+      'last_message_read': true, // Al inicio está "leído" porque no hay mensajes
     }).select().single();
 
     return newChat['id'];
   }
 
   // -------------------------------------------------------------
-  // 2. Obtener todos los chats del usuario
+  // 2. Obtener todos los chats (CON NUEVOS CAMPOS)
   // -------------------------------------------------------------
   Future<List<ChatModel>> getChatsForUser(String userId) async {
     final data = await supabase
@@ -54,6 +51,8 @@ class ChatService {
           user1_id,
           user2_id,
           last_message,
+          last_message_sender_id,
+          last_message_read,
           created_at,
           updated_at,
           user1:profiles!chats_user1_id_fkey(full_name, avatar_url),
@@ -66,7 +65,27 @@ class ChatService {
   }
 
   // -------------------------------------------------------------
-  // 3. Obtener mensajes de un chat
+  // 3. Marcar como leído (NUEVO)
+  // -------------------------------------------------------------
+  Future<void> markAsRead(String chatId, String myId) async {
+    // Marcamos que el último mensaje ha sido leído 
+    // SOLO si el último que escribió NO fui yo.
+    await supabase.from('chats').update({
+      'last_message_read': true,
+    }).match({
+      'id': chatId,
+    }).neq('last_message_sender_id', myId);
+
+    // También actualizamos los mensajes individuales
+    await supabase.from('messages').update({
+      'is_read': true,
+    }).match({
+      'chat_id': chatId,
+    }).neq('sender_id', myId);
+  }
+
+  // -------------------------------------------------------------
+  // 4. Obtener mensajes de un chat
   // -------------------------------------------------------------
   Future<List<MessageModel>> getMessages(String chatId) async {
     final data = await supabase
@@ -79,7 +98,7 @@ class ChatService {
   }
 
   // -------------------------------------------------------------
-  // 4. Enviar mensaje
+  // 5. Enviar mensaje (ACTUALIZADO)
   // -------------------------------------------------------------
   Future<void> sendMessage(String chatId, String senderId, String content) async {
     // Insertar el mensaje
@@ -87,23 +106,28 @@ class ChatService {
       'chat_id': chatId,
       'sender_id': senderId,
       'content': content,
+      'is_read': false,
     });
 
-    // Actualizar el último mensaje en la tabla chats (aprovechando tu política UPDATE)
+    // Actualizar el resumen del chat para la lista de chats
     await supabase.from('chats').update({
       'last_message': content,
+      'last_message_sender_id': senderId,
+      'last_message_read': false, // Al enviar, marcamos como "No leído" para el otro
       'updated_at': DateTime.now().toIso8601String(),
     }).eq('id', chatId);
   }
 
-  // -------------------------------------------------------------
-  // 5. Escuchar mensajes en tiempo real
+// -------------------------------------------------------------
+  // 6. Escuchar mensajes en tiempo real corregido y robusto)
   // -------------------------------------------------------------
   Stream<MessageModel> listenToMessages(String chatId) {
-    final streamController = StreamController<MessageModel>();
+    // Usamos un StreamController.broadcast para que varios widgets 
+    // puedan escuchar si fuera necesario.
+    final streamController = StreamController<MessageModel>.broadcast();
 
-    supabase
-        .channel('public:messages:chat_id=eq.$chatId')
+    final channel = supabase
+        .channel('chat_$chatId') // Un nombre único para el canal
         .onPostgresChanges(
           event: PostgresChangeEvent.insert,
           schema: 'public',
@@ -114,11 +138,19 @@ class ChatService {
             value: chatId,
           ),
           callback: (payload) {
-            final newMessage = MessageModel.fromJson(payload.newRecord);
-            streamController.add(newMessage);
+            if (payload.newRecord.isNotEmpty) {
+              final newMessage = MessageModel.fromJson(payload.newRecord);
+              streamController.add(newMessage);
+            }
           },
         )
         .subscribe();
+
+    // Cuando el stream se cierra (cuando dejas de escuchar), cerramos el canal de Supabase
+    streamController.onCancel = () {
+      supabase.removeChannel(channel);
+      streamController.close();
+    };
 
     return streamController.stream;
   }

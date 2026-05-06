@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:roomiefind/viewmodels/auth_viewmodel.dart';
 // Importamos las rutas en lugar del archivo directo
-import 'package:roomiefind/routes/routes.dart'; 
+import 'package:roomiefind/routes/routes.dart';
+import 'package:roomiefind/widgets/widgets.dart'; 
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -53,7 +54,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 style: TextStyle(color: colors.primary, fontSize: 26, fontWeight: FontWeight.bold)),
               const SizedBox(height: 30),
 
-              _buildLabel('Nombre y Apellidos'),
+              const BuildLabel(text: 'Nombre y Apellidos'),
               TextFormField(
                 controller: _nameController,
                 decoration: const InputDecoration(hintText: 'Ej: Juan Pérez'),
@@ -61,7 +62,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
               const SizedBox(height: 15),
 
-              _buildLabel('Nombre de Usuario'),
+              const BuildLabel(text: 'Nombre de Usuario'),
               TextFormField(
                 controller: _userController,
                 decoration: const InputDecoration(hintText: 'juanito123'),
@@ -69,7 +70,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
               const SizedBox(height: 15),
 
-              _buildLabel('Correo electrónico'),
+              const BuildLabel(text: 'Correo electrónico'),
               TextFormField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
@@ -78,7 +79,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
               const SizedBox(height: 15),
 
-              _buildLabel('Confirmar correo'),
+              const BuildLabel(text: 'Confirmar correo'),
               TextFormField(
                 controller: _confirmEmailController,
                 decoration: const InputDecoration(hintText: 'Repite tu correo'),
@@ -86,7 +87,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
               const SizedBox(height: 15),
 
-              _buildLabel('Contraseña'),
+              const BuildLabel(text: 'Contraseña'),
               TextFormField(
                 controller: _passController,
                 obscureText: true,
@@ -95,7 +96,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
               ),
               const SizedBox(height: 15),
 
-              _buildLabel('Confirmar contraseña'),
+              const BuildLabel(text: 'Confirmar contraseña'),
               TextFormField(
                 controller: _confirmPassController,
                 obscureText: true,
@@ -145,8 +146,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         },
                   child: authViewModel.isLoading
                       ? const SizedBox(
-                          height: 20, 
-                          width: 20, 
+                          height: 20,
+                          width: 20,
                           child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
                         )
                       : const Text('Registrarme'),
@@ -157,13 +158,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildLabel(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
     );
   }
 }

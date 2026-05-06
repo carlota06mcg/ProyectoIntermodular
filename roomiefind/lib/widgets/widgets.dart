@@ -5,3 +5,5 @@ export 'bottomNavigationStudent.dart';
 export 'property_card.dart';
 export 'custom_field_profile.dart';
 export 'bottomNavigationOwner.dart';
+export 'BuildLabel.dart';
+export 'BuildRoleButton.dart';

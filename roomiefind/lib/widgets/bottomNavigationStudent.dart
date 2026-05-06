@@ -14,8 +14,6 @@ class CustomBottomNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     // Colores basados en tu tema y diseño
     const Color backgroundColor = Color(0xFFEBDDCF); 
-    const Color primaryColor = Color(0xFFAE2535); 
-    const Color unselectedColor = Color(0xFFC9A696);
 
     return BottomAppBar(
       color: backgroundColor,

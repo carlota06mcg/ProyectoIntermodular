@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:roomiefind/models/user_model.dart';
 import 'package:roomiefind/routes/routes.dart';
 import 'package:roomiefind/viewmodels/auth_viewmodel.dart';
+import 'package:roomiefind/widgets/widgets.dart'; 
 
 class RoleSelectionScreen extends StatelessWidget {
   const RoleSelectionScreen({super.key});
@@ -32,8 +33,7 @@ class RoleSelectionScreen extends StatelessWidget {
                   Image.asset('lib/photos/Logo.png', height: 100),
                   const SizedBox(height: 60),
 
-                  _buildRoleButton(
-                    context: context,
+                  RoleButton(
                     label: 'Estudiante',
                     icon: Icons.menu_book_rounded,
                     color: primaryRed,
@@ -53,8 +53,7 @@ class RoleSelectionScreen extends StatelessWidget {
 
                   const SizedBox(height: 40),
 
-                  _buildRoleButton(
-                    context: context,
+                  RoleButton(
                     label: 'Propietario',
                     icon: Icons.home_rounded,
                     color: primaryRed,
@@ -82,44 +81,5 @@ class RoleSelectionScreen extends StatelessWidget {
       ),
     );
   }
-
-  Widget _buildRoleButton({
-    required BuildContext context,
-    required String label,
-    required IconData icon,
-    required Color color,
-    required VoidCallback onPressed,
-    required bool isLoading,
-  }) {
-    return SizedBox(
-      width: 180,
-      height: 164,
-      child: ElevatedButton(
-        onPressed: isLoading ? null : onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: color,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-          elevation: 3,
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 50, color: Colors.white),
-            const SizedBox(height: 15),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  
 }

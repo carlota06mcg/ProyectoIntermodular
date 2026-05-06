@@ -5,6 +5,7 @@ import 'package:roomiefind/screens/Owner/createAppartment.dart';
 import 'package:roomiefind/screens/Shared/Chat/chat-plantilla.dart';
 import 'package:roomiefind/viewmodels/chat_viewmodel.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:roomiefind/widgets/widgets.dart'; 
 
 class PropertyDetailsScreen extends StatelessWidget {
   final PropertyModel property;
@@ -109,7 +110,7 @@ Padding(
           // Imagen grande izquierda
           Expanded(
             flex: 2,
-            child: _buildImage(property.imageUrls.isNotEmpty ? property.imageUrls[0] : null),
+            child: CustomPropertyImage(url: property.imageUrls.isNotEmpty ? property.imageUrls[0] : null,),
           ),
           const SizedBox(width: 4),
           // Columna derecha con dos pequeñas
@@ -117,9 +118,10 @@ Padding(
             flex: 1,
             child: Column(
               children: [
-                Expanded(child: _buildImage(property.imageUrls.length > 1 ? property.imageUrls[1] : null)),
+                Expanded(child: CustomPropertyImage(url: property.imageUrls.length > 1 ? property.imageUrls[1] : null)),
                 const SizedBox(height: 4),
-                Expanded(child: _buildImage(property.imageUrls.length > 2 ? property.imageUrls[2] : null)),
+                Expanded(child: CustomPropertyImage(url: property.imageUrls.length > 2 ? property.imageUrls[2] : null,),
+        ),
               ],
             ),
           ),
@@ -251,13 +253,7 @@ Padding(
       ),
     );
   }
-
-  Widget _buildImage(String? url) {
-    return url != null
-        ? Image.network(url, fit: BoxFit.cover)
-        : Container(color: Colors.grey[300], child: const Icon(Icons.image));
-  }
-
+//PENDIENTE DE REVISAR BARRA DE ESTADISTICAS
   Widget _buildStatBar(String label, double value) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

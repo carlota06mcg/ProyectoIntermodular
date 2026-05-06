@@ -7,3 +7,4 @@ export 'custom_field_profile.dart';
 export 'bottomNavigationOwner.dart';
 export 'BuildLabel.dart';
 export 'BuildRoleButton.dart';
+export 'CustomPropertyImage.dart';

@@ -114,6 +114,27 @@ class PropertyViewModel extends ChangeNotifier {
     }
   }
 
+  Future<void> deleteImagesFromStorage(List<String> urls) async {
+  try {
+    for (String url in urls) {
+      // Extraemos el nombre del archivo de la URL de Supabase
+      // La URL suele ser: .../storage/v1/object/public/bucket_name/folder/filename.jpg
+      final uri = Uri.parse(url);
+      final pathSegments = uri.pathSegments;
+      
+      // Ajusta 'propiedades' por el nombre de tu bucket
+      // El path suele empezar después de /public/NombreBucket/
+      final filePath = pathSegments.skip(pathSegments.indexOf('propiedades') + 1).join('/');
+
+      await Supabase.instance.client.storage
+          .from('propiedades') 
+          .remove([filePath]);
+    }
+  } catch (e) {
+    print("Error borrando archivos del Storage: $e");
+  }
+}
+
   // --- AUXILIARES ---
   void _setLoading(bool value) {
     _isLoading = value;

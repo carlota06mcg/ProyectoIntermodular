@@ -20,7 +20,7 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
 
   late TextEditingController _nombreController;
   late TextEditingController _precioController;
-  late TextEditingController _descripcionController; // Controlador para descripción
+  late TextEditingController _descripcionController;
   late TextEditingController _calleController;
   late TextEditingController _ciudadController;
   late TextEditingController _localidadController;
@@ -30,7 +30,9 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
   bool _tieneTren = false;
 
   final ImagePicker _picker = ImagePicker();
-  List<XFile> _imagenesSeleccionadas = [];
+  List<XFile> _imagenesSeleccionadas = []; // Fotos nuevas locales
+  List<String> _urlsABorrar = [];         // URLs de Supabase marcadas para eliminar
+  
   String _tipoSeleccionado = 'Piso Compartido';
   final List<String> _tiposAlojamiento = ['Estudio', 'Piso Compartido', 'Residencia'];
 
@@ -48,7 +50,7 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
 
     _nombreController = TextEditingController(text: esEdicion ? p!.title : '');
     _precioController = TextEditingController(text: esEdicion ? p!.price.toString() : '');
-    _descripcionController = TextEditingController(text: esEdicion ? p!.description : ''); // Inicializar
+    _descripcionController = TextEditingController(text: esEdicion ? p!.description : '');
     _calleController = TextEditingController(text: esEdicion ? p!.streetNameNumber : '');
     _ciudadController = TextEditingController(text: esEdicion ? p!.city : '');
     _localidadController = TextEditingController(text: esEdicion ? p!.locality : '');
@@ -85,7 +87,7 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
   void dispose() {
     _nombreController.dispose();
     _precioController.dispose();
-    _descripcionController.dispose(); // Dispose
+    _descripcionController.dispose();
     _calleController.dispose();
     _ciudadController.dispose();
     _localidadController.dispose();
@@ -97,6 +99,16 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
     final propVM = Provider.of<PropertyViewModel>(context, listen: false);
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
+
+    // 1. ELIMINACIÓN FÍSICA DEL STORAGE (Si hay fotos para borrar)
+    if (_urlsABorrar.isNotEmpty) {
+      await propVM.deleteImagesFromStorage(_urlsABorrar);
+    }
+
+    // 2. Filtrar URLs que se mantienen en la base de datos
+    final List<String> urlsFinales = esEdicion 
+        ? widget.propertyAEditar!.imageUrls.where((url) => !_urlsABorrar.contains(url)).toList()
+        : [];
 
     List<String> transporteSeleccionado = [];
     if (_tieneBus) transporteSeleccionado.add("Bus");
@@ -113,8 +125,8 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
       locality: _localidadController.text,
       zipCode: _cpController.text,
       price: double.tryParse(_precioController.text) ?? 0.0,
-      description: _descripcionController.text, // Guardar descripción
-      imageUrls: esEdicion ? widget.propertyAEditar!.imageUrls : [],
+      description: _descripcionController.text,
+      imageUrls: urlsFinales, // Enviamos la lista limpia
       transport: transportString, 
       services: _tipoSeleccionado == 'Residencia' 
         ? {
@@ -188,13 +200,8 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
                   _buildLabel("Precio mensual"),
                   _buildTextField(_precioController, "€", isNumber: true),
 
-                  // --- NUEVO CAMPO DESCRIPCIÓN ---
                   _buildLabel("Descripción del alojamiento"),
-                  _buildTextField(
-                    _descripcionController, 
-                    "Cuéntanos más sobre el alojamiento, normas, ambiente...", 
-                    maxLines: 5
-                  ),
+                  _buildTextField(_descripcionController, "Cuéntanos más...", maxLines: 5),
 
                   _buildLabel("Transporte cercano"),
                   SwitchListTile(
@@ -233,17 +240,11 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
 
   Widget _buildLabel(String text) => Padding(padding: const EdgeInsets.only(top: 20, bottom: 8), child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold)));
 
-  // Modificado para soportar multilínea
   Widget _buildTextField(TextEditingController controller, String hint, {bool isNumber = false, int maxLines = 1}) => TextField(
     controller: controller, 
     keyboardType: isNumber ? TextInputType.number : (maxLines > 1 ? TextInputType.multiline : TextInputType.text),
     maxLines: maxLines,
-    decoration: InputDecoration(
-      hintText: hint, 
-      filled: true, 
-      fillColor: inputFillColor, 
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)
-    ),
+    decoration: InputDecoration(hintText: hint, filled: true, fillColor: inputFillColor, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
   );
 
   Widget _buildDynamicServices() {
@@ -278,40 +279,73 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
       children: [
         CheckboxListTile(title: const Text("Acepta Mascotas"), value: infoMascotas, onChanged: (v) => setState(() => infoMascotas = v!), activeColor: primaryRed),
         CheckboxListTile(title: const Text("Apto Fumadores"), value: infoFumadores, onChanged: (v) => setState(() => infoFumadores = v!), activeColor: primaryRed),
-        CheckboxListTile(title: const Text("Mixto"), value: infoMixto, onChanged: (v) => setState(() { 
-          infoMixto = v!; if(v) { infoSoloHombres = false; infoSoloMujeres = false; } 
-        }), activeColor: primaryRed),
-        CheckboxListTile(title: const Text("Solo Hombres"), value: infoSoloHombres, onChanged: (v) => setState(() { 
-          infoSoloHombres = v!; if(v) { infoSoloMujeres = false; infoMixto = false; } 
-        }), activeColor: primaryRed),
-        CheckboxListTile(title: const Text("Solo Mujeres"), value: infoSoloMujeres, onChanged: (v) => setState(() { 
-          infoSoloMujeres = v!; if(v) { infoSoloHombres = false; infoMixto = false; } 
-        }), activeColor: primaryRed),
+        CheckboxListTile(title: const Text("Mixto"), value: infoMixto, onChanged: (v) => setState(() { infoMixto = v!; if(v) { infoSoloHombres = false; infoSoloMujeres = false; } }), activeColor: primaryRed),
+        CheckboxListTile(title: const Text("Solo Hombres"), value: infoSoloHombres, onChanged: (v) => setState(() { infoSoloHombres = v!; if(v) { infoSoloMujeres = false; infoMixto = false; } }), activeColor: primaryRed),
+        CheckboxListTile(title: const Text("Solo Mujeres"), value: infoSoloMujeres, onChanged: (v) => setState(() { infoSoloMujeres = v!; if(v) { infoSoloHombres = false; infoMixto = false; } }), activeColor: primaryRed),
       ],
     );
   }
 
   Widget _buildPhotoGrid() {
+    // Filtrar fotos que ya estaban en Supabase y que NO hemos marcado para borrar
+    final List<String> fotosExistentes = (widget.propertyAEditar?.imageUrls ?? [])
+        .where((url) => !_urlsABorrar.contains(url))
+        .toList();
+
     return Column(
       children: [
-        ElevatedButton.icon(onPressed: () async {
-          final List<XFile> imagenes = await _picker.pickMultiImage();
-          if (imagenes.isNotEmpty) setState(() => _imagenesSeleccionadas.addAll(imagenes));
-        }, icon: const Icon(Icons.add_a_photo), label: const Text("Añadir Fotos")),
+        ElevatedButton.icon(
+          onPressed: () async {
+            final List<XFile> imagenes = await _picker.pickMultiImage();
+            if (imagenes.isNotEmpty) setState(() => _imagenesSeleccionadas.addAll(imagenes));
+          }, 
+          icon: const Icon(Icons.add_a_photo), 
+          label: const Text("Añadir Fotos")
+        ),
         const SizedBox(height: 10),
-        if (_imagenesSeleccionadas.isNotEmpty)
-          GridView.builder(
-            shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 8, mainAxisSpacing: 8),
-            itemCount: _imagenesSeleccionadas.length,
-            itemBuilder: (ctx, i) => Stack(
-              fit: StackFit.expand,
-              children: [
-                ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.file(File(_imagenesSeleccionadas[i].path), fit: BoxFit.cover)),
-                Positioned(right: 0, top: 0, child: IconButton(icon: const CircleAvatar(backgroundColor: Colors.red, radius: 10, child: Icon(Icons.close, size: 12, color: Colors.white)), onPressed: () => setState(() => _imagenesSeleccionadas.removeAt(i)))),
-              ],
-            ),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3, crossAxisSpacing: 8, mainAxisSpacing: 8
           ),
+          itemCount: fotosExistentes.length + _imagenesSeleccionadas.length,
+          itemBuilder: (ctx, i) {
+            if (i < fotosExistentes.length) {
+              // FOTO REMOTA (Supabase)
+              final url = fotosExistentes[i];
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.network(url, fit: BoxFit.cover)),
+                  Positioned(
+                    right: 0, top: 0,
+                    child: IconButton(
+                      icon: const CircleAvatar(backgroundColor: Colors.red, radius: 10, child: Icon(Icons.close, size: 12, color: Colors.white)),
+                      onPressed: () => setState(() => _urlsABorrar.add(url)),
+                    )
+                  ),
+                ],
+              );
+            } else {
+              // FOTO LOCAL (Nueva)
+              final localIndex = i - fotosExistentes.length;
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.file(File(_imagenesSeleccionadas[localIndex].path), fit: BoxFit.cover)),
+                  Positioned(
+                    right: 0, top: 0,
+                    child: IconButton(
+                      icon: const CircleAvatar(backgroundColor: Colors.black, radius: 10, child: Icon(Icons.close, size: 12, color: Colors.white)),
+                      onPressed: () => setState(() => _imagenesSeleccionadas.removeAt(localIndex)),
+                    )
+                  ),
+                ],
+              );
+            }
+          },
+        ),
       ],
     );
   }

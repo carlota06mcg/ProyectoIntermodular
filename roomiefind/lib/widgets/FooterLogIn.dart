@@ -12,19 +12,7 @@ class Footerlogin extends StatelessWidget {
           style: TextStyle(fontSize: 12, color: Colors.black54),
         ),
         const SizedBox(height: 20),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text("¿No tienes cuenta? "),
-            Text(
-              "Regístrate",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ),
-          ],
-        ),
+
       ],
     );
   }

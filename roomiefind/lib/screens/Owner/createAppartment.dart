@@ -30,8 +30,8 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
   bool _tieneTren = false;
 
   final ImagePicker _picker = ImagePicker();
-  List<XFile> _imagenesSeleccionadas = []; // Fotos nuevas locales
-  List<String> _urlsABorrar = [];         // URLs de Supabase marcadas para eliminar
+  List<XFile> _imagenesSeleccionadas = []; 
+  List<String> _urlsABorrar = [];         
   
   String _tipoSeleccionado = 'Piso Compartido';
   final List<String> _tiposAlojamiento = ['Estudio', 'Piso Compartido', 'Residencia'];
@@ -59,22 +59,27 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
     if (esEdicion && p?.services != null) {
       _tieneBus = p!.services['transporte_bus'] ?? false;
       _tieneTren = p!.services['transporte_tren'] ?? false;
-    }
-
-    if (esEdicion && p != null) {
       _tipoSeleccionado = p.type;
-      servAgua = p.services['agua'] ?? false;
-      servLuz = p.services['luz'] ?? false;
+      
+      // Cargar servicios comunes
       servWifi = p.services['wifi'] ?? false;
       servCocina = p.services['cocina'] ?? false;
-      servLavadora = p.services['lavadora'] ?? false;
       resHabIndiv = p.services['hab_individual'] ?? false;
       resHabComp = p.services['hab_compartida'] ?? false;
+
+      // Cargar servicios específicos de Pisos/Estudios
+      servAgua = p.services['agua'] ?? false;
+      servLuz = p.services['luz'] ?? false;
+      servLavadora = p.services['lavadora'] ?? false;
+
+      // Cargar servicios específicos de Residencias
       resDesayuno = p.services['desayuno'] ?? false;
       resAlmuerzo = p.services['almuerzo'] ?? false;
       resCena = p.services['cena'] ?? false;
       resGym = p.services['gym'] ?? false;
       resSalas = p.services['salas_estudio'] ?? false;
+
+      // Info adicional
       infoMascotas = p.additionalInfo['mascotas'] ?? false;
       infoFumadores = p.additionalInfo['fumadores'] ?? false;
       infoMixto = p.additionalInfo['mixto'] ?? false;
@@ -100,12 +105,10 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
 
-    // 1. ELIMINACIÓN FÍSICA DEL STORAGE (Si hay fotos para borrar)
     if (_urlsABorrar.isNotEmpty) {
       await propVM.deleteImagesFromStorage(_urlsABorrar);
     }
 
-    // 2. Filtrar URLs que se mantienen en la base de datos
     final List<String> urlsFinales = esEdicion 
         ? widget.propertyAEditar!.imageUrls.where((url) => !_urlsABorrar.contains(url)).toList()
         : [];
@@ -114,6 +117,32 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
     if (_tieneBus) transporteSeleccionado.add("Bus");
     if (_tieneTren) transporteSeleccionado.add("Tren/Metro");
     String transportString = transporteSeleccionado.isEmpty ? "Ninguno" : transporteSeleccionado.join(", ");
+
+    // Construcción del mapa de servicios según el tipo de alojamiento
+    Map<String, bool> servicesMap = {
+      "wifi": servWifi,
+      "cocina": servCocina,
+      "hab_individual": resHabIndiv,
+      "hab_compartida": resHabComp,
+      "transporte_bus": _tieneBus,
+      "transporte_tren": _tieneTren,
+    };
+
+    if (_tipoSeleccionado == 'Residencia') {
+      servicesMap.addAll({
+        "desayuno": resDesayuno,
+        "almuerzo": resAlmuerzo,
+        "cena": resCena,
+        "gym": resGym,
+        "salas_estudio": resSalas,
+      });
+    } else {
+      servicesMap.addAll({
+        "agua": servAgua,
+        "luz": servLuz,
+        "lavadora": servLavadora,
+      });
+    }
 
     final propiedadData = PropertyModel(
       id: esEdicion ? widget.propertyAEditar!.id : null,
@@ -126,24 +155,16 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
       zipCode: _cpController.text,
       price: double.tryParse(_precioController.text) ?? 0.0,
       description: _descripcionController.text,
-      imageUrls: urlsFinales, // Enviamos la lista limpia
+      imageUrls: urlsFinales,
       transport: transportString, 
-      services: _tipoSeleccionado == 'Residencia' 
-        ? {
-            "cocina": servCocina,
-            "transporte_bus": _tieneBus,
-            "transporte_tren": _tieneTren,
-            "hab_individual": resHabIndiv, "hab_compartida": resHabComp, 
-            "desayuno": resDesayuno, "almuerzo": resAlmuerzo, 
-            "cena": resCena, "gym": resGym, "salas_estudio": resSalas
-          }
-        : {
-            "agua": servAgua, "luz": servLuz, "wifi": servWifi, 
-            "cocina": servCocina, "lavadora": servLavadora,
-            "transporte_bus": _tieneBus,
-            "transporte_tren": _tieneTren,
-          },
-      additionalInfo: {"mascotas": infoMascotas, "fumadores": infoFumadores, "mixto": infoMixto, "solo_hombres": infoSoloHombres, "solo_mujeres": infoSoloMujeres},
+      services: servicesMap,
+      additionalInfo: {
+        "mascotas": infoMascotas, 
+        "fumadores": infoFumadores, 
+        "mixto": infoMixto, 
+        "solo_hombres": infoSoloHombres, 
+        "solo_mujeres": infoSoloMujeres
+      },
     );
 
     bool exito = esEdicion 
@@ -174,7 +195,7 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildLabel("Nombre del alojamiento"),
-                  _buildTextField(_nombreController, "Ej: Mi estudio centro"),
+                  _buildTextField(_nombreController, "Ej: Estudio centro individual"),
                   
                   _buildLabel("Tipo de Alojamiento"),
                   DropdownButtonFormField<String>(
@@ -251,24 +272,26 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
     bool isRes = _tipoSeleccionado == 'Residencia';
     return Wrap(
       spacing: 8,
+      runSpacing: 4,
       children: [
-        FilterChip(
-          label: const Text("Cocina"), 
-          selected: servCocina, 
-          onSelected: (v) => setState(() => servCocina = v),
-          selectedColor: primaryRed.withOpacity(0.2),
-        ),
+        // Servicios siempre visibles (Comunes)
+        FilterChip(label: const Text("WiFi"), selected: servWifi, onSelected: (v) => setState(() => servWifi = v), selectedColor: primaryRed.withOpacity(0.2)),
+        FilterChip(label: const Text("Cocina"), selected: servCocina, onSelected: (v) => setState(() => servCocina = v), selectedColor: primaryRed.withOpacity(0.2)),
+        FilterChip(label: const Text("Hab. Individual"), selected: resHabIndiv, onSelected: (v) => setState(() { resHabIndiv = v; if(v) resHabComp = false; }), selectedColor: primaryRed.withOpacity(0.2)),
+        FilterChip(label: const Text("Hab. Compartida"), selected: resHabComp, onSelected: (v) => setState(() { resHabComp = v; if(v) resHabIndiv = false; }), selectedColor: primaryRed.withOpacity(0.2)),
+
         if (isRes) ...[
-          FilterChip(label: const Text("Hab. Individual"), selected: resHabIndiv, onSelected: (v) => setState(() { resHabIndiv = v; if(v) resHabComp = false; })),
-          FilterChip(label: const Text("Hab. Compartida"), selected: resHabComp, onSelected: (v) => setState(() { resHabComp = v; if(v) resHabIndiv = false; })),
-          FilterChip(label: const Text("Desayuno"), selected: resDesayuno, onSelected: (v) => setState(() => resDesayuno = v)),
-          FilterChip(label: const Text("Almuerzo"), selected: resAlmuerzo, onSelected: (v) => setState(() => resAlmuerzo = v)),
-          FilterChip(label: const Text("Gym"), selected: resGym, onSelected: (v) => setState(() => resGym = v)),
+          // Solo Residencias
+          FilterChip(label: const Text("Desayuno"), selected: resDesayuno, onSelected: (v) => setState(() => resDesayuno = v), selectedColor: primaryRed.withOpacity(0.2)),
+          FilterChip(label: const Text("Almuerzo"), selected: resAlmuerzo, onSelected: (v) => setState(() => resAlmuerzo = v), selectedColor: primaryRed.withOpacity(0.2)),
+          FilterChip(label: const Text("Cena"), selected: resCena, onSelected: (v) => setState(() => resCena = v), selectedColor: primaryRed.withOpacity(0.2)),
+          FilterChip(label: const Text("Gym"), selected: resGym, onSelected: (v) => setState(() => resGym = v), selectedColor: primaryRed.withOpacity(0.2)),
+          FilterChip(label: const Text("Salas Estudio"), selected: resSalas, onSelected: (v) => setState(() => resSalas = v), selectedColor: primaryRed.withOpacity(0.2)),
         ] else ...[
-          FilterChip(label: const Text("Agua"), selected: servAgua, onSelected: (v) => setState(() => servAgua = v)),
-          FilterChip(label: const Text("Luz"), selected: servLuz, onSelected: (v) => setState(() => servLuz = v)),
-          FilterChip(label: const Text("WiFi"), selected: servWifi, onSelected: (v) => setState(() => servWifi = v)),
-          FilterChip(label: const Text("Lavadora"), selected: servLavadora, onSelected: (v) => setState(() => servLavadora = v)),
+          // Solo Estudios y Pisos
+          FilterChip(label: const Text("Agua"), selected: servAgua, onSelected: (v) => setState(() => servAgua = v), selectedColor: primaryRed.withOpacity(0.2)),
+          FilterChip(label: const Text("Luz"), selected: servLuz, onSelected: (v) => setState(() => servLuz = v), selectedColor: primaryRed.withOpacity(0.2)),
+          FilterChip(label: const Text("Lavadora"), selected: servLavadora, onSelected: (v) => setState(() => servLavadora = v), selectedColor: primaryRed.withOpacity(0.2)),
         ],
       ],
     );
@@ -287,7 +310,6 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
   }
 
   Widget _buildPhotoGrid() {
-    // Filtrar fotos que ya estaban en Supabase y que NO hemos marcado para borrar
     final List<String> fotosExistentes = (widget.propertyAEditar?.imageUrls ?? [])
         .where((url) => !_urlsABorrar.contains(url))
         .toList();
@@ -312,7 +334,6 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
           itemCount: fotosExistentes.length + _imagenesSeleccionadas.length,
           itemBuilder: (ctx, i) {
             if (i < fotosExistentes.length) {
-              // FOTO REMOTA (Supabase)
               final url = fotosExistentes[i];
               return Stack(
                 fit: StackFit.expand,
@@ -328,7 +349,6 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
                 ],
               );
             } else {
-              // FOTO LOCAL (Nueva)
               final localIndex = i - fotosExistentes.length;
               return Stack(
                 fit: StackFit.expand,

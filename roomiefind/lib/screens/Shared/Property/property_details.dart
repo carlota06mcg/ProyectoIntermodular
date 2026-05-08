@@ -16,10 +16,9 @@ class PropertyDetailsScreen extends StatefulWidget {
 }
 
 class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
-  // 1. VARIABLE PARA LA PROPIEDAD ACTUALIZADA
   late PropertyModel _currentProperty;
   late String _selectedImageUrl;
-  bool _isLoading = true; // Para mostrar un indicador mientras refresca
+  bool _isLoading = true; 
   
   final Color primaryRed = const Color(0xFFB02A37);
   final Color secondaryGrey = const Color(0xFF757575);
@@ -27,21 +26,15 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    // Inicializamos con los datos que ya tenemos para no mostrar una pantalla vacía
     _currentProperty = widget.property;
     _selectedImageUrl = _currentProperty.imageUrls.isNotEmpty 
         ? _currentProperty.imageUrls[0] 
         : '';
-    
-    // Lanzamos la actualización inmediata
     _refreshPropertyData();
   }
 
-  // 2. FUNCIÓN PARA BUSCAR DATOS FRESCOS EN SUPABASE
-Future<void> _refreshPropertyData() async {
-    // Verificamos que el ID no sea nulo antes de hacer la consulta
+  Future<void> _refreshPropertyData() async {
     if (widget.property.id == null) {
-      debugPrint("Error: El ID de la propiedad es nulo.");
       if (mounted) setState(() => _isLoading = false);
       return;
     }
@@ -50,21 +43,18 @@ Future<void> _refreshPropertyData() async {
       final data = await Supabase.instance.client
           .from('properties') 
           .select()
-          .eq('id', widget.property.id!) // El '!' asegura a Dart que el ID no es nulo
+          .eq('id', widget.property.id!) 
           .single();
 
       if (mounted) {
         setState(() {
-          // Actualizamos la propiedad local con los datos más recientes de la BD
           _currentProperty = PropertyModel.fromJson(data);
           _isLoading = false;
         });
       }
     } catch (e) {
       debugPrint("Error al refrescar propiedad: $e");
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -107,14 +97,13 @@ Future<void> _refreshPropertyData() async {
             )
         ],
       ),
-      body: RefreshIndicator( // Permite al usuario deslizar hacia abajo para refrescar manualmente
+      body: RefreshIndicator(
         onRefresh: _refreshPropertyData,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. TÍTULO Y ACCIONES
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 child: Row(
@@ -184,8 +173,6 @@ Future<void> _refreshPropertyData() async {
       bottomNavigationBar: _buildBottomAction(esPropietario, _currentProperty.ownerId),
     );
   }
-
-  // --- WIDGETS DE CONSTRUCCIÓN USANDO _currentProperty ---
 
   Widget _buildSectionTitle(String title) {
     return Padding(
@@ -286,74 +273,91 @@ Future<void> _refreshPropertyData() async {
   Widget _buildServicesGrid() {
     final services = _currentProperty.services;
     List<Widget> items = [];
+    
+    // Mapeo completo de iconos y etiquetas legibles
     final map = {
-      'wifi': Icons.wifi, 'agua': Icons.water_drop_outlined, 'luz': Icons.lightbulb_outline,
-      'gas': Icons.local_fire_department_outlined, 'lavadora': Icons.local_laundry_service_outlined,
-      'gym': Icons.fitness_center, 'desayuno': Icons.breakfast_dining_outlined,
-      'limpieza': Icons.cleaning_services_outlined, 'cocina': Icons.soup_kitchen_outlined,
+      'wifi': {'icon': Icons.wifi, 'label': 'WiFi'},
+      'agua': {'icon': Icons.water_drop_outlined, 'label': 'Agua'},
+      'luz': {'icon': Icons.lightbulb_outline, 'label': 'Luz'},
+      'gas': {'icon': Icons.local_fire_department_outlined, 'label': 'Gas'},
+      'lavadora': {'icon': Icons.local_laundry_service_outlined, 'label': 'Lavadora'},
+      'cocina': {'icon': Icons.soup_kitchen_outlined, 'label': 'Cocina'},
+      'gym': {'icon': Icons.fitness_center, 'label': 'Gimnasio'},
+      'desayuno': {'icon': Icons.coffee_outlined, 'label': 'Desayuno'},
+      'almuerzo': {'icon': Icons.restaurant_menu, 'label': 'Almuerzo'},
+      'cena': {'icon': Icons.nightlight_round, 'label': 'Cena'},
+      'salas_estudio': {'icon': Icons.menu_book, 'label': 'Salas estudio'},
+      'hab_individual': {'icon': Icons.person_outline, 'label': 'Individual'},
+      'hab_compartida': {'icon': Icons.groups_outlined, 'label': 'Compartida'},
+      'limpieza': {'icon': Icons.cleaning_services_outlined, 'label': 'Limpieza'},
     };
-    map.forEach((key, icon) {
-      if (services[key] == true) items.add(_buildServiceItem(icon, key[0].toUpperCase() + key.substring(1)));
+
+    map.forEach((key, data) {
+      if (services[key] == true) {
+        items.add(_buildServiceItem(data['icon'] as IconData, data['label'] as String));
+      }
     });
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Wrap(spacing: 20, runSpacing: 15, children: items.isEmpty ? [const Text("No se especifican suministros.")] : items),
+      child: Wrap(
+        spacing: 20, 
+        runSpacing: 15, 
+        children: items.isEmpty ? [const Text("No se especifican suministros.")] : items
+      ),
     );
   }
 
   Widget _buildServiceItem(IconData icon, String label) {
     return SizedBox(
       width: (MediaQuery.of(context).size.width / 2) - 40,
-      child: Row(children: [Icon(icon, size: 22, color: Colors.black87), const SizedBox(width: 10), Text(label)]),
+      child: Row(
+        children: [
+          Icon(icon, size: 22, color: Colors.black87), 
+          const SizedBox(width: 10), 
+          Expanded(child: Text(label, style: const TextStyle(fontSize: 14)))
+        ],
+      ),
     );
   }
 
-Widget _buildAdditionalInfo() {
-  final info = _currentProperty.additionalInfo;
-  List<Widget> chips = [];
+  Widget _buildAdditionalInfo() {
+    final info = _currentProperty.additionalInfo;
+    List<Widget> chips = [];
 
-  // --- 1. LÓGICA DE MASCOTAS ---
-  if (info['mascotas'] == true) {
-    chips.add(_infoChip("Apto mascotas", Icons.pets, Colors.green[700]!));
-  } else if (info['mascotas'] == false) {
-    chips.add(_infoChip("No apto mascotas", Icons.do_not_disturb_on_outlined, secondaryGrey));
+    if (info['mascotas'] == true) {
+      chips.add(_infoChip("Apto mascotas", Icons.pets, Colors.green[700]!));
+    } else if (info['mascotas'] == false) {
+      chips.add(_infoChip("No apto mascotas", Icons.do_not_disturb_on_outlined, secondaryGrey));
+    }
+
+    if (info['fumadores'] == true) {
+      chips.add(_infoChip("Apto fumadores", Icons.smoking_rooms, Colors.orange[800]!));
+    } else if (info['fumadores'] == false) {
+      chips.add(_infoChip("No fumadores", Icons.smoke_free, secondaryGrey));
+    }
+
+    if (info['mixto'] == true) {
+      chips.add(_infoChip("MIXTO", Icons.wc, primaryRed));
+    }
+    if (info['solo_mujeres'] == true) {
+      chips.add(_infoChip("SOLO MUJERES", Icons.woman, primaryRed));
+    }
+    if (info['solo_hombres'] == true) {
+      chips.add(_infoChip("SOLO HOMBRES", Icons.man, primaryRed));
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 10,
+        children: chips.isEmpty 
+          ? [const Text("Sin restricciones especificadas", style: TextStyle(fontSize: 13, color: Colors.grey))] 
+          : chips,
+      ),
+    );
   }
-
-  // --- 2. LÓGICA DE FUMADORES ---
-  if (info['fumadores'] == true) {
-    chips.add(_infoChip("Apto fumadores", Icons.smoking_rooms, Colors.orange[800]!));
-  } else if (info['fumadores'] == false) {
-    chips.add(_infoChip("No fumadores", Icons.smoke_free, secondaryGrey));
-  }
-
-  // --- 3. LÓGICA DE GÉNERO (LOS 3 CHIPS INDEPENDIENTES) ---
-  
-  // Chip Mixto
-  if (info['mixto'] == true) {
-    chips.add(_infoChip("MIXTO", Icons.wc, primaryRed));
-  }
-
-  // Chip Solo Mujeres
-  if (info['solo_mujeres'] == true) {
-    chips.add(_infoChip("SOLO MUJERES", Icons.woman, primaryRed));
-  }
-
-  // Chip Solo Hombres
-  if (info['solo_hombres'] == true) {
-    chips.add(_infoChip("SOLO HOMBRES", Icons.man, primaryRed));
-  }
-
-  return Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 20),
-    child: Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: chips.isEmpty 
-        ? [const Text("Sin restricciones especificadas", style: TextStyle(fontSize: 13, color: Colors.grey))] 
-        : chips,
-    ),
-  );
-}
 
   Widget _infoChip(String label, IconData icon, Color color) {
     return Container(
@@ -424,7 +428,6 @@ Widget _buildAdditionalInfo() {
   }
 }
 
-// FullScreenGallery (Mismo que antes)
 class FullScreenGallery extends StatelessWidget {
   final List<String> imageUrls;
   final int initialIndex;

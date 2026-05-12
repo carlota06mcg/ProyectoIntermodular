@@ -34,13 +34,14 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     _refreshPropertyData();
 
     // --- AÑADE ESTO PARA EL HISTORIAL ---
-if (_currentProperty.id != null) {
-    // Usamos microtask o addPostFrameCallback para no interferir con el renderizado
+// REGISTRO EN BD: Esto dispara el 'upsert' que definimos en el ViewModel
+  if (widget.property.id != null) {
     Future.microtask(() {
       Provider.of<PropertyViewModel>(context, listen: false)
-          .addToHistory(_currentProperty.id!);
+          .addToHistory(widget.property.id!);
     });
   }
+
 
   }
 

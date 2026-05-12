@@ -132,37 +132,50 @@ Future<void> toggleFavorite(String propertyId) async {
 
   //MÉTODOS PARA EL HISTORIAL DE VISITAS
 
-  // Cargar el historial al iniciar
-// CARGAR: Se llama al abrir la app o la pantalla de historial
+// CARGAR HISTORIAL DESDE SUPABASE
   Future<void> loadHistory() async {
+    final user = _supabase.auth.currentUser;
+    if (user == null) return;
+
     try {
-      final prefs = await SharedPreferences.getInstance();
-      _historyIds = prefs.getStringList('property_history') ?? [];
+      final data = await _supabase
+          .from('history')
+          .select('property_id')
+          .eq('user_id', user.id)
+          .order('viewed_at', ascending: false) // El más reciente arriba
+          .limit(20); // Limitamos a los últimos 20 vistos
+
+      _historyIds = (data as List)
+          .map((item) => item['property_id'].toString())
+          .toList();
+      
       notifyListeners();
     } catch (e) {
-      debugPrint("Error cargando historial persistente: $e");
+      debugPrint("Error cargando historial desde BD: $e");
     }
   }
 
-  // GUARDAR: Se llama cada vez que el usuario hace clic en un piso
+  // GUARDAR EN EL HISTORIAL (UPSERT)
   Future<void> addToHistory(String propertyId) async {
-    // 1. Modificación local para respuesta inmediata
+    final user = _supabase.auth.currentUser;
+    if (user == null) return;
+
+    // 1. Actualización local inmediata para la UI
     _historyIds.remove(propertyId);
     _historyIds.insert(0, propertyId);
-    
-    // Opcional: Limitar el historial a los últimos 20 para no llenar el disco
-    if (_historyIds.length > 20) {
-      _historyIds.removeLast();
-    }
-    
+    if (_historyIds.length > 20) _historyIds.removeLast();
     notifyListeners();
 
-    // 2. Guardado persistente en el disco
+    // 2. Guardado en Supabase
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setStringList('property_history', _historyIds);
+      await _supabase.from('history').upsert({
+        'user_id': user.id,
+        'property_id': propertyId,
+        'viewed_at': DateTime.now().toIso8601String(),
+      }, onConflict: 'user_id, property_id'); 
+      // El onConflict hace que si ya existe, solo actualice el 'viewed_at'
     } catch (e) {
-      debugPrint("Error guardando historial: $e");
+      debugPrint("Error al guardar historial en BD: $e");
     }
   }
 

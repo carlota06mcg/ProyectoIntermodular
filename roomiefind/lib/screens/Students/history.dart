@@ -13,6 +13,15 @@ class HistoryScreen extends StatefulWidget {
 
 class _HistoryScreenState extends State<HistoryScreen> {
   @override
+  void initState() {
+    super.initState();
+    // CLAVE: Cargar los datos de la base de datos al iniciar la pantalla
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<PropertyViewModel>(context, listen: false).loadHistory();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     const Color primaryColor = Color(0xFFAE2535);
 
@@ -44,22 +53,24 @@ class _HistoryScreenState extends State<HistoryScreen> {
       ),
       body: Consumer<PropertyViewModel>(
         builder: (context, vm, child) {
-          // 1. Convertimos los IDs del historial en objetos PropertyModel reales
-          // Buscamos dentro de la lista global de propiedades del ViewModel
+          // 1. Mapeamos IDs a modelos reales buscando en la lista global del VM
           final List<PropertyModel> misPropiedadesHistorial = vm.historyIds
               .map((id) {
                 try {
-                  // Buscamos la propiedad que coincida con el ID del historial
                   return vm.properties.firstWhere((p) => p.id == id);
                 } catch (e) {
-                  // Si por alguna razón la propiedad ya no existe en la lista global, devolvemos null
                   return null;
                 }
               })
-              .whereType<PropertyModel>() // Filtramos los nulos
+              .whereType<PropertyModel>()
               .toList();
 
-          // 2. Estado si el historial está vacío
+          // 2. Mientras carga y no hay datos, podrías mostrar un spinner (opcional)
+          if (vm.isLoading && misPropiedadesHistorial.isEmpty) {
+            return const Center(child: CircularProgressIndicator(color: primaryColor));
+          }
+
+          // 3. Estado vacío
           if (misPropiedadesHistorial.isEmpty) {
             return Center(
               child: Column(
@@ -89,16 +100,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
             );
           }
 
-          // 3. Listado de historial ordenado (el más reciente arriba)
-          return ListView.builder(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            itemCount: misPropiedadesHistorial.length,
-            itemBuilder: (context, index) {
-              return PropertyCard(
-                property: misPropiedadesHistorial[index],
-                esPropietario: false,
-              );
-            },
+          // 4. Listado con RefreshIndicator para poder actualizar a mano
+          return RefreshIndicator(
+            onRefresh: () => vm.loadHistory(),
+            color: primaryColor,
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              itemCount: misPropiedadesHistorial.length,
+              itemBuilder: (context, index) {
+                return PropertyCard(
+                  property: misPropiedadesHistorial[index],
+                  esPropietario: false,
+                );
+              },
+            ),
           );
         },
       ),

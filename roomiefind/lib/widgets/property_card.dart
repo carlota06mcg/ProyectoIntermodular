@@ -6,8 +6,8 @@ import 'package:roomiefind/screens/Shared/Property/property_details.dart';
 import '../../viewmodels/property_viewmodel.dart';
 
 class PropertyCard extends StatelessWidget {
-  final PropertyModel property; 
-  final bool esPropietario; 
+  final PropertyModel property;
+  final bool esPropietario;
 
   const PropertyCard({
     super.key,
@@ -42,7 +42,6 @@ class PropertyCard extends StatelessWidget {
               Navigator.pop(ctx);
               final propVM = Provider.of<PropertyViewModel>(context, listen: false);
               
-              // Usamos el ! porque el ID debe existir para eliminar
               if (property.id != null) {
                 bool ok = await propVM.deleteProperty(property.id!, property.ownerId);
                 
@@ -96,21 +95,51 @@ class PropertyCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- IMAGEN ---
-            ClipRRect(
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(12),
-                bottomLeft: Radius.circular(12),
-              ),
-              child: property.imageUrls.isNotEmpty
-                  ? Image.network(
-                      property.imageUrls[0],
-                      width: 140,
-                      height: 120,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => _imagePlaceholder(),
-                    )
-                  : _imagePlaceholder(),
+            // --- IMAGEN CON CORAZÓN DE FAVORITOS ---
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(12),
+                    bottomLeft: Radius.circular(12),
+                  ),
+                  child: property.imageUrls.isNotEmpty
+                      ? Image.network(
+                          property.imageUrls[0],
+                          width: 140,
+                          height: 120,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => _imagePlaceholder(),
+                        )
+                      : _imagePlaceholder(),
+                ),
+                // Botón de Favorito (solo si NO es el propietario viendo su propia lista)
+                if (!esPropietario)
+                  Positioned(
+                    top: 5,
+                    right: 5,
+                    child: Consumer<PropertyViewModel>(
+                      builder: (context, vm, child) {
+                        final isFav = vm.favoriteIds.contains(property.id);
+                        return GestureDetector(
+                          onTap: () => vm.toggleFavorite(property.id!),
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.8),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              isFav ? Icons.favorite : Icons.favorite_border,
+                              color: isFav ? Colors.red : customRed,
+                              size: 18,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+              ],
             ),
 
             // --- DETALLES ---
@@ -156,7 +185,6 @@ class PropertyCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
 
-                    // UBICACIÓN CORREGIDA
                     Text(
                       "${property.city}, ${property.locality}",
                       style: const TextStyle(color: Colors.grey, fontSize: 11),

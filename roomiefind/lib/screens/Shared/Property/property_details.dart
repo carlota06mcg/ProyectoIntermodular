@@ -3,8 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:roomiefind/models/property_model.dart';
 import 'package:roomiefind/screens/Shared/Chat/chat-plantilla.dart';
 import 'package:roomiefind/viewmodels/chat_viewmodel.dart';
+import 'package:roomiefind/viewmodels/property_viewmodel.dart'; 
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:roomiefind/widgets/widgets.dart'; 
+import 'package:roomiefind/widgets/widgets.dart';
 
 class PropertyDetailsScreen extends StatefulWidget {
   final PropertyModel property;
@@ -18,12 +19,12 @@ class PropertyDetailsScreen extends StatefulWidget {
 class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   late PropertyModel _currentProperty;
   late String _selectedImageUrl;
-  bool _isLoading = true; 
-  
+  bool _isLoading = true;
+
   final Color primaryRed = const Color(0xFFB02A37);
   final Color secondaryGrey = const Color(0xFF757575);
 
-  @override
+@override
   void initState() {
     super.initState();
     _currentProperty = widget.property;
@@ -31,6 +32,16 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
         ? _currentProperty.imageUrls[0] 
         : '';
     _refreshPropertyData();
+
+    // --- AÑADE ESTO PARA EL HISTORIAL ---
+if (_currentProperty.id != null) {
+    // Usamos microtask o addPostFrameCallback para no interferir con el renderizado
+    Future.microtask(() {
+      Provider.of<PropertyViewModel>(context, listen: false)
+          .addToHistory(_currentProperty.id!);
+    });
+  }
+
   }
 
   Future<void> _refreshPropertyData() async {
@@ -41,9 +52,9 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
 
     try {
       final data = await Supabase.instance.client
-          .from('properties') 
+          .from('properties')
           .select()
-          .eq('id', widget.property.id!) 
+          .eq('id', widget.property.id!)
           .single();
 
       if (mounted) {
@@ -118,8 +129,30 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                     Row(
                       children: [
                         Icon(Icons.ios_share, color: primaryRed),
-                        const SizedBox(width: 15),
-                        Icon(Icons.favorite_border, color: primaryRed),
+                        
+                        if (!esPropietario) ...[
+                          const SizedBox(width: 15),
+                          Consumer<PropertyViewModel>(
+                            builder: (context, vm, child) {
+                              // Verificamos que el ID existe
+                              final propertyId = _currentProperty.id;
+                              final isFav = propertyId != null && vm.favoriteIds.contains(propertyId);
+                              
+                              return GestureDetector(
+                                onTap: () {
+                                  if (propertyId != null) {
+                                    vm.toggleFavorite(propertyId);
+                                  }
+                                },
+                                child: Icon(
+                                  isFav ? Icons.favorite : Icons.favorite_border,
+                                  color: isFav ? Colors.red : primaryRed,
+                                  size: 26,
+                                ),
+                              );
+                            },
+                          ),
+                        ],
                       ],
                     )
                   ],
@@ -173,6 +206,8 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
       bottomNavigationBar: _buildBottomAction(esPropietario, _currentProperty.ownerId),
     );
   }
+
+  // --- WIDGETS AUXILIARES (IGUALES A LOS ANTERIORES) ---
 
   Widget _buildSectionTitle(String title) {
     return Padding(
@@ -274,7 +309,6 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     final services = _currentProperty.services;
     List<Widget> items = [];
     
-    // Mapeo completo de iconos y etiquetas legibles
     final map = {
       'wifi': {'icon': Icons.wifi, 'label': 'WiFi'},
       'agua': {'icon': Icons.water_drop_outlined, 'label': 'Agua'},
@@ -428,10 +462,13 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   }
 }
 
+// --- CLASE GALERÍA (MOVIDA FUERA PARA EVITAR ERRORES) ---
 class FullScreenGallery extends StatelessWidget {
   final List<String> imageUrls;
   final int initialIndex;
+
   const FullScreenGallery({Key? key, required this.imageUrls, required this.initialIndex}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -441,9 +478,26 @@ class FullScreenGallery extends StatelessWidget {
           PageView.builder(
             itemCount: imageUrls.length,
             controller: PageController(initialPage: initialIndex),
-            itemBuilder: (context, index) => Center(child: InteractiveViewer(child: Image.network(imageUrls[index], fit: BoxFit.contain))),
+            itemBuilder: (context, index) => Center(
+              child: InteractiveViewer(
+                child: Image.network(imageUrls[index], fit: BoxFit.contain),
+              ),
+            ),
           ),
-          Positioned(top: 40, right: 20, child: SafeArea(child: GestureDetector(onTap: () => Navigator.pop(context), child: Container(decoration: const BoxDecoration(color: Colors.black45, shape: BoxShape.circle), padding: const EdgeInsets.all(8), child: const Icon(Icons.close, color: Colors.white, size: 24))))),
+          Positioned(
+            top: 40,
+            right: 20,
+            child: SafeArea(
+              child: GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  decoration: const BoxDecoration(color: Colors.black45, shape: BoxShape.circle),
+                  padding: const EdgeInsets.all(8),
+                  child: const Icon(Icons.close, color: Colors.white, size: 24),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );

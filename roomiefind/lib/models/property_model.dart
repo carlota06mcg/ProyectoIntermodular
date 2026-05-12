@@ -9,6 +9,11 @@ class PropertyModel {
   final String city;
   final String locality;
   final String zipCode;
+
+  // --- NUEVOS CAMPOS PARA EL MAPA ---
+  final double? latitude;
+  final double? longitude;
+  // ----------------------------------
   
   final double price;
   final String description;
@@ -29,6 +34,10 @@ class PropertyModel {
     required this.city,
     required this.locality,
     required this.zipCode,
+    // --- NUEVOS CAMPOS EN CONSTRUCTOR ---
+    this.latitude,
+    this.longitude,
+    // ------------------------------------
     required this.price,
     required this.description,
     required this.imageUrls,
@@ -49,10 +58,13 @@ class PropertyModel {
       city: json['city'] ?? '',
       locality: json['locality'] ?? '',
       zipCode: json['zip_code'] ?? '',
+      // --- NUEVOS CAMPOS DESDE JSON ---
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
+      // --------------------------------
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
       description: json['description'] ?? '',
       imageUrls: List<String>.from(json['imageUrls'] ?? []),
-      // Al ser JSONB en Supabase, los extraemos como Mapas
       services: Map<String, dynamic>.from(json['services'] ?? {}),
       additionalInfo: Map<String, dynamic>.from(json['additional_info'] ?? {}),
       transport: json['transport']?.toString(),
@@ -73,6 +85,10 @@ class PropertyModel {
       'city': city,
       'locality': locality,
       'zip_code': zipCode,
+      // --- NUEVOS CAMPOS HACIA JSON ---
+      'latitude': latitude,
+      'longitude': longitude,
+      // --------------------------------
       'price': price,
       'description': description,
       'imageUrls': imageUrls,

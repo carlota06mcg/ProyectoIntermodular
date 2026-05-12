@@ -6,6 +6,9 @@ import 'package:roomiefind/viewmodels/chat_viewmodel.dart';
 import 'package:roomiefind/viewmodels/property_viewmodel.dart'; 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:roomiefind/widgets/widgets.dart';
+// --- NUEVAS IMPORTACIONES PARA EL MAPA ---
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 class PropertyDetailsScreen extends StatefulWidget {
   final PropertyModel property;
@@ -24,7 +27,7 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   final Color primaryRed = const Color(0xFFB02A37);
   final Color secondaryGrey = const Color(0xFF757575);
 
-@override
+  @override
   void initState() {
     super.initState();
     _currentProperty = widget.property;
@@ -33,16 +36,12 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
         : '';
     _refreshPropertyData();
 
-    // --- AÑADE ESTO PARA EL HISTORIAL ---
-// REGISTRO EN BD: Esto dispara el 'upsert' que definimos en el ViewModel
-  if (widget.property.id != null) {
-    Future.microtask(() {
-      Provider.of<PropertyViewModel>(context, listen: false)
-          .addToHistory(widget.property.id!);
-    });
-  }
-
-
+    if (widget.property.id != null) {
+      Future.microtask(() {
+        Provider.of<PropertyViewModel>(context, listen: false)
+            .addToHistory(widget.property.id!);
+      });
+    }
   }
 
   Future<void> _refreshPropertyData() async {
@@ -130,20 +129,15 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
                     Row(
                       children: [
                         Icon(Icons.ios_share, color: primaryRed),
-                        
                         if (!esPropietario) ...[
                           const SizedBox(width: 15),
                           Consumer<PropertyViewModel>(
                             builder: (context, vm, child) {
-                              // Verificamos que el ID existe
                               final propertyId = _currentProperty.id;
                               final isFav = propertyId != null && vm.favoriteIds.contains(propertyId);
-                              
                               return GestureDetector(
                                 onTap: () {
-                                  if (propertyId != null) {
-                                    vm.toggleFavorite(propertyId);
-                                  }
+                                  if (propertyId != null) vm.toggleFavorite(propertyId);
                                 },
                                 child: Icon(
                                   isFav ? Icons.favorite : Icons.favorite_border,
@@ -188,17 +182,10 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
 
               const SizedBox(height: 25),
               _buildSectionTitle("Ubicación exacta"),
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 20),
-                height: 180,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(15),
-                  image: const DecorationImage(
-                    image: NetworkImage("https://i.stack.imgur.com/HILXw.png"), 
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
+              
+              // --- MAPA IMPLEMENTADO ---
+              _buildMapSection(),
+              
               const SizedBox(height: 120), 
             ],
           ),
@@ -208,7 +195,57 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
     );
   }
 
-  // --- WIDGETS AUXILIARES (IGUALES A LOS ANTERIORES) ---
+  // --- NUEVO WIDGET PARA EL MAPA ---
+  Widget _buildMapSection() {
+    if (_currentProperty.latitude == null || _currentProperty.longitude == null) {
+      return Container(
+        margin: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.grey[100],
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: const Center(child: Text("Ubicación no disponible en el mapa", style: TextStyle(color: Colors.grey))),
+      );
+    }
+
+    final LatLng position = LatLng(_currentProperty.latitude!, _currentProperty.longitude!);
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      height: 180,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(15),
+        child: FlutterMap(
+          options: MapOptions(
+            initialCenter: position,
+            initialZoom: 15.0,
+            interactionOptions: const InteractionOptions(flags: InteractiveFlag.none),
+          ),
+          children: [
+            TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.example.roomiefind',
+            ),
+            MarkerLayer(
+              markers: [
+                Marker(
+                  point: position,
+                  width: 40,
+                  height: 40,
+                  child: Icon(Icons.location_pin, color: primaryRed, size: 40),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildSectionTitle(String title) {
     return Padding(
@@ -309,7 +346,6 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   Widget _buildServicesGrid() {
     final services = _currentProperty.services;
     List<Widget> items = [];
-    
     final map = {
       'wifi': {'icon': Icons.wifi, 'label': 'WiFi'},
       'agua': {'icon': Icons.water_drop_outlined, 'label': 'Agua'},
@@ -372,15 +408,9 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
       chips.add(_infoChip("No fumadores", Icons.smoke_free, secondaryGrey));
     }
 
-    if (info['mixto'] == true) {
-      chips.add(_infoChip("MIXTO", Icons.wc, primaryRed));
-    }
-    if (info['solo_mujeres'] == true) {
-      chips.add(_infoChip("SOLO MUJERES", Icons.woman, primaryRed));
-    }
-    if (info['solo_hombres'] == true) {
-      chips.add(_infoChip("SOLO HOMBRES", Icons.man, primaryRed));
-    }
+    if (info['mixto'] == true) chips.add(_infoChip("MIXTO", Icons.wc, primaryRed));
+    if (info['solo_mujeres'] == true) chips.add(_infoChip("SOLO MUJERES", Icons.woman, primaryRed));
+    if (info['solo_hombres'] == true) chips.add(_infoChip("SOLO HOMBRES", Icons.man, primaryRed));
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -463,7 +493,6 @@ class _PropertyDetailsScreenState extends State<PropertyDetailsScreen> {
   }
 }
 
-// --- CLASE GALERÍA (MOVIDA FUERA PARA EVITAR ERRORES) ---
 class FullScreenGallery extends StatelessWidget {
   final List<String> imageUrls;
   final int initialIndex;

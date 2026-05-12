@@ -5,6 +5,10 @@ import 'package:provider/provider.dart';
 import 'package:roomiefind/models/property_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../viewmodels/property_viewmodel.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import '../../services/location_service.dart';
+import 'dart:async';
 
 class FormularioAlojamientoScreen extends StatefulWidget {
   final PropertyModel? propertyAEditar;
@@ -18,6 +22,15 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
   final Color primaryRed = const Color(0xFFB02A37);
   final Color inputFillColor = const Color(0xFFF5F5F5);
 
+  final LocationService _locationService = LocationService();
+  final MapController _mapController = MapController();
+  
+  double? _lat;
+  double? _lon;
+  bool _isLocating = false;
+  Timer? _debounce;
+
+
   late TextEditingController _nombreController;
   late TextEditingController _precioController;
   late TextEditingController _descripcionController;
@@ -28,13 +41,12 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
   
   bool _tieneBus = false;
   bool _tieneTren = false;
+  String _tipoSeleccionado = 'Piso Compartido';
+  final List<String> _tiposAlojamiento = ['Estudio', 'Piso Compartido', 'Residencia'];
 
   final ImagePicker _picker = ImagePicker();
   List<XFile> _imagenesSeleccionadas = []; 
-  List<String> _urlsABorrar = [];         
-  
-  String _tipoSeleccionado = 'Piso Compartido';
-  final List<String> _tiposAlojamiento = ['Estudio', 'Piso Compartido', 'Residencia'];
+  List<String> _urlsABorrar = []; 
 
   bool get esEdicion => widget.propertyAEditar != null;
 
@@ -56,30 +68,27 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
     _localidadController = TextEditingController(text: esEdicion ? p!.locality : '');
     _cpController = TextEditingController(text: esEdicion ? p!.zipCode : '');
     
+    if (esEdicion) {
+      _lat = p!.latitude;
+      _lon = p!.longitude;
+    }
+
     if (esEdicion && p?.services != null) {
       _tieneBus = p!.services['transporte_bus'] ?? false;
       _tieneTren = p!.services['transporte_tren'] ?? false;
       _tipoSeleccionado = p.type;
-      
-      // Cargar servicios comunes
       servWifi = p.services['wifi'] ?? false;
       servCocina = p.services['cocina'] ?? false;
       resHabIndiv = p.services['hab_individual'] ?? false;
       resHabComp = p.services['hab_compartida'] ?? false;
-
-      // Cargar servicios específicos de Pisos/Estudios
       servAgua = p.services['agua'] ?? false;
       servLuz = p.services['luz'] ?? false;
       servLavadora = p.services['lavadora'] ?? false;
-
-      // Cargar servicios específicos de Residencias
       resDesayuno = p.services['desayuno'] ?? false;
       resAlmuerzo = p.services['almuerzo'] ?? false;
       resCena = p.services['cena'] ?? false;
       resGym = p.services['gym'] ?? false;
       resSalas = p.services['salas_estudio'] ?? false;
-
-      // Info adicional
       infoMascotas = p.additionalInfo['mascotas'] ?? false;
       infoFumadores = p.additionalInfo['fumadores'] ?? false;
       infoMixto = p.additionalInfo['mixto'] ?? false;
@@ -90,6 +99,7 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _nombreController.dispose();
     _precioController.dispose();
     _descripcionController.dispose();
@@ -97,51 +107,149 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
     _ciudadController.dispose();
     _localidadController.dispose();
     _cpController.dispose();
+    _mapController.dispose();
     super.dispose();
   }
+
+  // --- LÓGICA DE GEOLOCALIZACIÓN IMPLEMENTADA ---
+
+  Future<void> _verificarUbicacion() async {
+    if (_calleController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Escribe al menos la calle y el número")),
+      );
+      return;
+    }
+
+    setState(() => _isLocating = true);
+    
+    // Buscamos con la mayor info posible para precisión
+    final direccion = "${_calleController.text}, ${_ciudadController.text}, ${_cpController.text}, España";
+    final result = await _locationService.getCoordsFromAddress(direccion);
+
+    if (result != null) {
+      setState(() {
+        _lat = result['lat'];
+        _lon = result['lon'];
+        _isLocating = false;
+      });
+      _mapController.move(LatLng(_lat!, _lon!), 17.0);
+    } else {
+      setState(() => _isLocating = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("No se pudo encontrar la ubicación exacta")),
+      );
+    }
+  }
+
+Future<void> _actualizarDireccionDesdeMapa(LatLng position) async {
+  // Validación crítica para evitar la excepción
+  if (!position.latitude.isFinite || !position.longitude.isFinite) return;
+
+  if (_debounce?.isActive ?? false) _debounce!.cancel();
+
+  _debounce = Timer(const Duration(milliseconds: 600), () async {
+    // Actualizamos las coordenadas internas para el marcador
+    setState(() {
+      _lat = position.latitude;
+      _lon = position.longitude;
+    });
+
+    try {
+      final result = await _locationService.getAddressFromCoords(position);
+      if (result != null && result['address'] != null && mounted) {
+        final addr = result['address'];
+        setState(() {
+          _calleController.text = "${addr['road'] ?? ''} ${addr['house_number'] ?? ''}".trim();
+          _ciudadController.text = addr['city'] ?? addr['town'] ?? addr['village'] ?? '';
+          _cpController.text = addr['postcode'] ?? '';
+          _localidadController.text = addr['suburb'] ?? addr['neighbourhood'] ?? '';
+        });
+      }
+    } catch (e) {
+      print("Error: $e");
+    }
+  });
+}
+  // --- WIDGET DEL MAPA INTERACTIVO ---
+
+  Widget _buildInteractiveMap() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            height: 220,
+            width: double.infinity,
+            decoration: BoxDecoration(color: Colors.grey[200], border: Border.all(color: Colors.grey.shade300)),
+            child: _lat == null 
+              ? const Center(child: Text("Busca una dirección para activar el mapa", style: TextStyle(color: Colors.grey)))
+:FlutterMap(
+  mapController: _mapController,
+  options: MapOptions(
+    initialCenter: LatLng(_lat!, _lon!),
+    initialZoom: 17.0,
+    // CAMBIO AQUÍ: Usamos MapCamera en lugar de MapPosition
+    onPositionChanged: (MapCamera camera, bool hasGesture) {
+      if (hasGesture) {
+        // La cámara siempre tiene un centro válido (center)
+        _actualizarDireccionDesdeMapa(camera.center);
+      }
+    },
+  ),
+  children: [
+    TileLayer(
+      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      userAgentPackageName: 'com.roomiefind.app',
+      tileDisplay: const TileDisplay.fadeIn(duration: Duration(milliseconds: 300)),
+    ),
+    MarkerLayer(
+      markers: [
+        Marker(
+          point: LatLng(_lat!, _lon!),
+          width: 45,
+          height: 45,
+          child: Icon(Icons.location_pin, color: primaryRed, size: 45),
+        ),
+      ],
+    ),
+  ],
+)
+          ),
+        ),
+        if (_lat != null)
+          const Padding(
+            padding: EdgeInsets.only(top: 6, left: 4),
+            child: Text("📍 Arrastra el mapa para ajustar el pin sobre el portal.", 
+              style: TextStyle(fontSize: 11, color: Colors.blueGrey, fontStyle: FontStyle.italic)),
+          ),
+      ],
+    );
+  }
+
+  // ---------------------------------
 
   Future<void> _procesarFormulario() async {
     final propVM = Provider.of<PropertyViewModel>(context, listen: false);
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
 
-    if (_urlsABorrar.isNotEmpty) {
-      await propVM.deleteImagesFromStorage(_urlsABorrar);
-    }
+    if (_urlsABorrar.isNotEmpty) await propVM.deleteImagesFromStorage(_urlsABorrar);
 
     final List<String> urlsFinales = esEdicion 
         ? widget.propertyAEditar!.imageUrls.where((url) => !_urlsABorrar.contains(url)).toList()
         : [];
 
-    List<String> transporteSeleccionado = [];
-    if (_tieneBus) transporteSeleccionado.add("Bus");
-    if (_tieneTren) transporteSeleccionado.add("Tren/Metro");
-    String transportString = transporteSeleccionado.isEmpty ? "Ninguno" : transporteSeleccionado.join(", ");
-
-    // Construcción del mapa de servicios según el tipo de alojamiento
     Map<String, bool> servicesMap = {
-      "wifi": servWifi,
-      "cocina": servCocina,
-      "hab_individual": resHabIndiv,
-      "hab_compartida": resHabComp,
-      "transporte_bus": _tieneBus,
-      "transporte_tren": _tieneTren,
+      "wifi": servWifi, "cocina": servCocina, "hab_individual": resHabIndiv,
+      "hab_compartida": resHabComp, "transporte_bus": _tieneBus, "transporte_tren": _tieneTren,
     };
 
     if (_tipoSeleccionado == 'Residencia') {
-      servicesMap.addAll({
-        "desayuno": resDesayuno,
-        "almuerzo": resAlmuerzo,
-        "cena": resCena,
-        "gym": resGym,
-        "salas_estudio": resSalas,
-      });
+      servicesMap.addAll({"desayuno": resDesayuno, "almuerzo": resAlmuerzo, "cena": resCena, "gym": resGym, "salas_estudio": resSalas});
     } else {
-      servicesMap.addAll({
-        "agua": servAgua,
-        "luz": servLuz,
-        "lavadora": servLavadora,
-      });
+      servicesMap.addAll({"agua": servAgua, "luz": servLuz, "lavadora": servLavadora});
     }
 
     final propiedadData = PropertyModel(
@@ -153,17 +261,16 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
       city: _ciudadController.text,
       locality: _localidadController.text,
       zipCode: _cpController.text,
+      latitude: _lat,
+      longitude: _lon,
       price: double.tryParse(_precioController.text) ?? 0.0,
       description: _descripcionController.text,
       imageUrls: urlsFinales,
-      transport: transportString, 
+      transport: "${_tieneBus ? 'Bus ' : ''}${_tieneTren ? 'Tren' : ''}".trim(), 
       services: servicesMap,
       additionalInfo: {
-        "mascotas": infoMascotas, 
-        "fumadores": infoFumadores, 
-        "mixto": infoMixto, 
-        "solo_hombres": infoSoloHombres, 
-        "solo_mujeres": infoSoloMujeres
+        "mascotas": infoMascotas, "fumadores": infoFumadores, "mixto": infoMixto, 
+        "solo_hombres": infoSoloHombres, "solo_mujeres": infoSoloMujeres
       },
     );
 
@@ -206,13 +313,29 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
                   ),
 
                   _buildLabel("Ubicación"),
-                  _buildTextField(_calleController, "Calle y número"),
-                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(child: _buildTextField(_calleController, "Calle y número")),
+                      const SizedBox(width: 8),
+                      IconButton.filled(
+                        onPressed: _isLocating ? null : _verificarUbicacion,
+                        style: IconButton.styleFrom(backgroundColor: primaryRed),
+                        icon: _isLocating 
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Icon(Icons.location_searching),
+                      )
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 15),
+                  _buildInteractiveMap(), // EL MAPA INTERACTIVO AQUÍ
+                  const SizedBox(height: 15),
+
                   Row(
                     children: [
                       Expanded(child: _buildTextField(_ciudadController, "Ciudad")),
                       const SizedBox(width: 10),
-                      Expanded(child: _buildTextField(_localidadController, "Localidad")),
+                      Expanded(child: _buildTextField(_localidadController, "Localidad/Barrio")),
                     ],
                   ),
                   const SizedBox(height: 10),
@@ -221,26 +344,12 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
                   _buildLabel("Precio mensual"),
                   _buildTextField(_precioController, "€", isNumber: true),
 
-                  _buildLabel("Descripción del alojamiento"),
+                  _buildLabel("Descripción"),
                   _buildTextField(_descripcionController, "Cuéntanos más...", maxLines: 5),
 
                   _buildLabel("Transporte cercano"),
-                  SwitchListTile(
-                    title: const Text("Autobús"),
-                    secondary: Icon(Icons.directions_bus, color: _tieneBus ? primaryRed : Colors.grey),
-                    value: _tieneBus,
-                    activeColor: primaryRed,
-                    contentPadding: EdgeInsets.zero,
-                    onChanged: (bool value) => setState(() => _tieneBus = value),
-                  ),
-                  SwitchListTile(
-                    title: const Text("Tren / Metro"),
-                    secondary: Icon(Icons.train, color: _tieneTren ? primaryRed : Colors.grey),
-                    value: _tieneTren,
-                    activeColor: primaryRed,
-                    contentPadding: EdgeInsets.zero,
-                    onChanged: (bool value) => setState(() => _tieneTren = value),
-                  ),
+                  _buildSwitch(Icons.directions_bus, "Autobús", _tieneBus, (v) => setState(() => _tieneBus = v)),
+                  _buildSwitch(Icons.train, "Tren / Metro", _tieneTren, (v) => setState(() => _tieneTren = v)),
 
                   _buildLabel("Fotos"),
                   _buildPhotoGrid(),
@@ -259,6 +368,7 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
     );
   }
 
+  // --- WIDGETS AUXILIARES ---
   Widget _buildLabel(String text) => Padding(padding: const EdgeInsets.only(top: 20, bottom: 8), child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold)));
 
   Widget _buildTextField(TextEditingController controller, String hint, {bool isNumber = false, int maxLines = 1}) => TextField(
@@ -268,27 +378,27 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
     decoration: InputDecoration(hintText: hint, filled: true, fillColor: inputFillColor, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none)),
   );
 
+  Widget _buildSwitch(IconData icon, String label, bool value, Function(bool) onChanged) => SwitchListTile(
+    title: Text(label), secondary: Icon(icon, color: value ? primaryRed : Colors.grey),
+    value: value, activeColor: primaryRed, contentPadding: EdgeInsets.zero, onChanged: onChanged,
+  );
+
   Widget _buildDynamicServices() {
     bool isRes = _tipoSeleccionado == 'Residencia';
     return Wrap(
-      spacing: 8,
-      runSpacing: 4,
+      spacing: 8, runSpacing: 4,
       children: [
-        // Servicios siempre visibles (Comunes)
         FilterChip(label: const Text("WiFi"), selected: servWifi, onSelected: (v) => setState(() => servWifi = v), selectedColor: primaryRed.withOpacity(0.2)),
         FilterChip(label: const Text("Cocina"), selected: servCocina, onSelected: (v) => setState(() => servCocina = v), selectedColor: primaryRed.withOpacity(0.2)),
         FilterChip(label: const Text("Hab. Individual"), selected: resHabIndiv, onSelected: (v) => setState(() { resHabIndiv = v; if(v) resHabComp = false; }), selectedColor: primaryRed.withOpacity(0.2)),
         FilterChip(label: const Text("Hab. Compartida"), selected: resHabComp, onSelected: (v) => setState(() { resHabComp = v; if(v) resHabIndiv = false; }), selectedColor: primaryRed.withOpacity(0.2)),
-
         if (isRes) ...[
-          // Solo Residencias
           FilterChip(label: const Text("Desayuno"), selected: resDesayuno, onSelected: (v) => setState(() => resDesayuno = v), selectedColor: primaryRed.withOpacity(0.2)),
           FilterChip(label: const Text("Almuerzo"), selected: resAlmuerzo, onSelected: (v) => setState(() => resAlmuerzo = v), selectedColor: primaryRed.withOpacity(0.2)),
           FilterChip(label: const Text("Cena"), selected: resCena, onSelected: (v) => setState(() => resCena = v), selectedColor: primaryRed.withOpacity(0.2)),
           FilterChip(label: const Text("Gym"), selected: resGym, onSelected: (v) => setState(() => resGym = v), selectedColor: primaryRed.withOpacity(0.2)),
           FilterChip(label: const Text("Salas Estudio"), selected: resSalas, onSelected: (v) => setState(() => resSalas = v), selectedColor: primaryRed.withOpacity(0.2)),
         ] else ...[
-          // Solo Estudios y Pisos
           FilterChip(label: const Text("Agua"), selected: servAgua, onSelected: (v) => setState(() => servAgua = v), selectedColor: primaryRed.withOpacity(0.2)),
           FilterChip(label: const Text("Luz"), selected: servLuz, onSelected: (v) => setState(() => servLuz = v), selectedColor: primaryRed.withOpacity(0.2)),
           FilterChip(label: const Text("Lavadora"), selected: servLavadora, onSelected: (v) => setState(() => servLavadora = v), selectedColor: primaryRed.withOpacity(0.2)),
@@ -310,59 +420,31 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
   }
 
   Widget _buildPhotoGrid() {
-    final List<String> fotosExistentes = (widget.propertyAEditar?.imageUrls ?? [])
-        .where((url) => !_urlsABorrar.contains(url))
-        .toList();
-
+    final List<String> fotosExistentes = (widget.propertyAEditar?.imageUrls ?? []).where((url) => !_urlsABorrar.contains(url)).toList();
     return Column(
       children: [
-        ElevatedButton.icon(
-          onPressed: () async {
-            final List<XFile> imagenes = await _picker.pickMultiImage();
-            if (imagenes.isNotEmpty) setState(() => _imagenesSeleccionadas.addAll(imagenes));
-          }, 
-          icon: const Icon(Icons.add_a_photo), 
-          label: const Text("Añadir Fotos")
-        ),
+        ElevatedButton.icon(onPressed: () async {
+          final List<XFile> imagenes = await _picker.pickMultiImage();
+          if (imagenes.isNotEmpty) setState(() => _imagenesSeleccionadas.addAll(imagenes));
+        }, icon: const Icon(Icons.add_a_photo), label: const Text("Añadir Fotos")),
         const SizedBox(height: 10),
         GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3, crossAxisSpacing: 8, mainAxisSpacing: 8
-          ),
+          shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 8, mainAxisSpacing: 8),
           itemCount: fotosExistentes.length + _imagenesSeleccionadas.length,
           itemBuilder: (ctx, i) {
             if (i < fotosExistentes.length) {
               final url = fotosExistentes[i];
-              return Stack(
-                fit: StackFit.expand,
-                children: [
-                  ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.network(url, fit: BoxFit.cover)),
-                  Positioned(
-                    right: 0, top: 0,
-                    child: IconButton(
-                      icon: const CircleAvatar(backgroundColor: Colors.red, radius: 10, child: Icon(Icons.close, size: 12, color: Colors.white)),
-                      onPressed: () => setState(() => _urlsABorrar.add(url)),
-                    )
-                  ),
-                ],
-              );
+              return Stack(fit: StackFit.expand, children: [
+                ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.network(url, fit: BoxFit.cover)),
+                Positioned(right: 0, top: 0, child: IconButton(icon: const CircleAvatar(backgroundColor: Colors.red, radius: 10, child: Icon(Icons.close, size: 12, color: Colors.white)), onPressed: () => setState(() => _urlsABorrar.add(url))))
+              ]);
             } else {
               final localIndex = i - fotosExistentes.length;
-              return Stack(
-                fit: StackFit.expand,
-                children: [
-                  ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.file(File(_imagenesSeleccionadas[localIndex].path), fit: BoxFit.cover)),
-                  Positioned(
-                    right: 0, top: 0,
-                    child: IconButton(
-                      icon: const CircleAvatar(backgroundColor: Colors.black, radius: 10, child: Icon(Icons.close, size: 12, color: Colors.white)),
-                      onPressed: () => setState(() => _imagenesSeleccionadas.removeAt(localIndex)),
-                    )
-                  ),
-                ],
-              );
+              return Stack(fit: StackFit.expand, children: [
+                ClipRRect(borderRadius: BorderRadius.circular(8), child: Image.file(File(_imagenesSeleccionadas[localIndex].path), fit: BoxFit.cover)),
+                Positioned(right: 0, top: 0, child: IconButton(icon: const CircleAvatar(backgroundColor: Colors.black, radius: 10, child: Icon(Icons.close, size: 12, color: Colors.white)), onPressed: () => setState(() => _imagenesSeleccionadas.removeAt(localIndex))))
+              ]);
             }
           },
         ),

@@ -1,4 +1,7 @@
+import 'dart:io'; // IMPORTANTE
 import 'package:flutter/material.dart';
+import 'package:image_cropper/image_cropper.dart'; // IMPORTANTE
+import 'package:image_picker/image_picker.dart'; // IMPORTANTE
 import 'package:provider/provider.dart';
 import '../../../models/user_model.dart';
 import '../../../viewmodels/auth_viewmodel.dart';
@@ -36,9 +39,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  // ==========================================
+  // LÓGICA DE SELECCIÓN Y RECORTE
+  // ==========================================
+  Future<void> _seleccionarYRecortarImagen() async {
+    final picker = ImagePicker();
+    final authVM = context.read<AuthViewModel>();
+
+    // 1. Seleccionar de galería
+    final XFile? pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
+
+    if (pickedFile == null) return;
+
+    // 2. Abrir editor de recorte
+    CroppedFile? croppedFile = await ImageCropper().cropImage(
+      sourcePath: pickedFile.path,
+      compressFormat: ImageCompressFormat.jpg,
+      compressQuality: 90,
+      uiSettings: [
+        AndroidUiSettings(
+          toolbarTitle: 'Ajustar Foto de Perfil',
+          toolbarColor: primaryRed,
+          toolbarWidgetColor: Colors.white,
+          initAspectRatio: CropAspectRatioPreset.square,
+          lockAspectRatio: true, // Forzamos cuadrado para el avatar circular
+          aspectRatioPresets: [CropAspectRatioPreset.square],
+        ),
+        IOSUiSettings(
+          title: 'Ajustar Foto',
+          aspectRatioLockEnabled: true,
+          resetAspectRatioEnabled: false,
+        ),
+      ],
+    );
+
+    if (croppedFile != null) {
+      // 3. Subir mediante el ViewModel
+      await authVM.updateAvatar(File(croppedFile.path));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthViewModel>().currentUser;
+    final authLoading = context.watch<AuthViewModel>().isLoading;
 
     if (user == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -79,7 +126,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            _buildAvatar(user),
+            _buildAvatar(user, authLoading), // Pasamos el estado de carga
             const SizedBox(height: 15),
             
             // NOMBRE Y USERNAME
@@ -100,26 +147,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildAvatar(UserModel user) {
-    return Stack(
-      alignment: Alignment.bottomRight,
-      children: [
-        CircleAvatar(
-          radius: 65,
-          backgroundColor: Colors.black,
-          backgroundImage: user.avatarUrl != null ? NetworkImage(user.avatarUrl!) : null,
-          child: user.avatarUrl == null ? const Icon(Icons.person, size: 80, color: Colors.white) : null,
-        ),
-        CircleAvatar(
-          radius: 20,
-          backgroundColor: Colors.white,
-          child: CircleAvatar(
-            radius: 17,
-            backgroundColor: primaryRed,
-            child: const Icon(Icons.camera_alt, color: Colors.white, size: 18),
+  Widget _buildAvatar(UserModel user, bool isLoading) {
+    return GestureDetector(
+      onTap: isEditing ? _seleccionarYRecortarImagen : null,
+      child: Stack(
+        alignment: Alignment.bottomRight,
+        children: [
+          CircleAvatar(
+            radius: 65,
+            backgroundColor: Colors.black,
+            backgroundImage: user.avatarUrl != null ? NetworkImage(user.avatarUrl!) : null,
+            child: user.avatarUrl == null 
+                ? const Icon(Icons.person, size: 80, color: Colors.white) 
+                : (isLoading ? const CircularProgressIndicator(color: Colors.white) : null),
           ),
-        ),
-      ],
+          if (isEditing) // El icono solo aparece si estamos editando
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: Colors.white,
+              child: CircleAvatar(
+                radius: 17,
+                backgroundColor: primaryRed,
+                child: const Icon(Icons.camera_alt, color: Colors.white, size: 18),
+              ),
+            ),
+        ],
+      ),
     );
   }
 

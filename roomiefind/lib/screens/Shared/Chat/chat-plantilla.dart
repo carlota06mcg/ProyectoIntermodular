@@ -19,53 +19,54 @@ class ChatPlantillaScreen extends StatefulWidget {
 class _ChatPlantillaScreenState extends State<ChatPlantillaScreen> {
   final TextEditingController _controller = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  String otherUserName = "Usuario"; 
+  
+  // Variables para los datos del otro usuario
+  String otherUserName = "Usuario";
+  String? otherUserAvatarUrl;
 
   @override
   void initState() {
     super.initState();
-    // Usamos addPostFrameCallback para no bloquear el renderizado inicial
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final vm = Provider.of<ChatViewModel>(context, listen: false);
       
-      // 1. Limpiamos mensajes anteriores para que no se vean mensajes del chat anterior
+      // 1. Limpiar mensajes anteriores
       vm.messages.clear(); 
       
-      // 2. Cargamos mensajes de la BD
+      // 2. Cargar mensajes de la BD
       vm.loadMessages(widget.chatId);
       
-      // 3. Activamos el escucha en tiempo real
+      // 3. Activar tiempo real
       vm.listenToChat(widget.chatId);
       
-      // 4. Marcamos como leído
+      // 4. Marcar como leído
       vm.markChatAsRead(widget.chatId);
       
-      _fetchOtherUserName();
+      // 5. Cargar nombre y foto del otro usuario
+      _fetchOtherUserData();
     });
   }
 
-  // Liberar recursos al salir
   @override
   void dispose() {
     _controller.dispose();
     _scrollController.dispose();
-    // IMPORTANTE: Cancelamos la suscripción al salir para que no gaste datos
-    // Esto lo hace el dispose del ViewModel si está bien configurado, 
-    // pero asegúrate de que el ViewModel deje de escuchar este chat específico.
     super.dispose();
   }
 
-  Future<void> _fetchOtherUserName() async {
+  Future<void> _fetchOtherUserData() async {
     final vm = Provider.of<ChatViewModel>(context, listen: false);
     try {
       final res = await vm.supabase
           .from('profiles')
-          .select('full_name')
+          .select('full_name, avatar_url')
           .eq('id', widget.otherUserId)
           .single();
+          
       if (mounted) {
         setState(() {
           otherUserName = res['full_name'] ?? "Usuario";
+          otherUserAvatarUrl = res['avatar_url'];
         });
       }
     } catch (e) {
@@ -75,13 +76,16 @@ class _ChatPlantillaScreenState extends State<ChatPlantillaScreen> {
 
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
-      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Usamos Consumer para que SOLO se reconstruya lo necesario
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -93,14 +97,24 @@ class _ChatPlantillaScreenState extends State<ChatPlantillaScreen> {
         ),
         title: Row(
           children: [
-            const CircleAvatar(
+            CircleAvatar(
               radius: 18,
-              backgroundImage: NetworkImage('https://cdn-icons-png.flaticon.com/512/3135/3135715.png'),
+              backgroundColor: Colors.grey.shade200,
+              backgroundImage: (otherUserAvatarUrl != null && otherUserAvatarUrl!.isNotEmpty)
+                  ? NetworkImage(otherUserAvatarUrl!)
+                  : null,
+              child: (otherUserAvatarUrl == null || otherUserAvatarUrl!.isEmpty)
+                  ? const Icon(Icons.person, color: Colors.grey, size: 20)
+                  : null,
             ),
             const SizedBox(width: 10),
             Text(
               otherUserName,
-              style: const TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                color: Colors.black87, 
+                fontSize: 16, 
+                fontWeight: FontWeight.bold
+              ),
             ),
           ],
         ),
@@ -110,7 +124,7 @@ class _ChatPlantillaScreenState extends State<ChatPlantillaScreen> {
           Expanded(
             child: Consumer<ChatViewModel>(
               builder: (context, vm, child) {
-                // Programamos el scroll para el siguiente frame tras el rebuild
+                // Scroll automático al recibir mensajes
                 WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
 
                 if (vm.isLoading && vm.messages.isEmpty) {
@@ -118,7 +132,10 @@ class _ChatPlantillaScreenState extends State<ChatPlantillaScreen> {
                 }
                 
                 if (vm.messages.isEmpty) {
-                  return const Center(child: Text("No hay mensajes aún. ¡Saluda!"));
+                  return const Center(
+                    child: Text("No hay mensajes aún. ¡Saluda!", 
+                    style: TextStyle(color: Colors.grey))
+                  );
                 }
 
                 return ListView.builder(
@@ -134,7 +151,9 @@ class _ChatPlantillaScreenState extends State<ChatPlantillaScreen> {
                       child: Container(
                         margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 4),
                         padding: const EdgeInsets.all(12),
-                        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+                        constraints: BoxConstraints(
+                          maxWidth: MediaQuery.of(context).size.width * 0.75
+                        ),
                         decoration: BoxDecoration(
                           color: isMine ? const Color(0xFFB82D41) : Colors.grey.shade200,
                           borderRadius: BorderRadius.only(
@@ -146,7 +165,10 @@ class _ChatPlantillaScreenState extends State<ChatPlantillaScreen> {
                         ),
                         child: Text(
                           msg.content,
-                          style: TextStyle(color: isMine ? Colors.white : Colors.black87),
+                          style: TextStyle(
+                            color: isMine ? Colors.white : Colors.black87,
+                            fontSize: 15,
+                          ),
                         ),
                       ),
                     );
@@ -156,12 +178,18 @@ class _ChatPlantillaScreenState extends State<ChatPlantillaScreen> {
             ),
           ),
           
-          // INPUT BAR
+          // BARRA DE ENTRADA DE TEXTO
           Container(
             padding: const EdgeInsets.all(15),
             decoration: BoxDecoration(
               color: Colors.white,
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05), 
+                  blurRadius: 10, 
+                  offset: const Offset(0, -2)
+                )
+              ],
             ),
             child: SafeArea(
               child: Row(
@@ -175,20 +203,23 @@ class _ChatPlantillaScreenState extends State<ChatPlantillaScreen> {
                       ),
                       child: TextField(
                         controller: _controller,
-                        onSubmitted: (val) => _handleSend(), // Enviar con el 'Enter' del teclado
+                        textCapitalization: TextCapitalization.sentences,
+                        onSubmitted: (val) => _handleSend(),
                         decoration: const InputDecoration(
                           hintText: 'Escribe un mensaje...',
+                          hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
                           border: InputBorder.none,
                         ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 10),
-                  CircleAvatar(
-                    backgroundColor: const Color(0xFFB82D41),
-                    child: IconButton(
-                      icon: const Icon(Icons.send, color: Colors.white, size: 20),
-                      onPressed: _handleSend,
+                  GestureDetector(
+                    onTap: _handleSend,
+                    child: const CircleAvatar(
+                      backgroundColor: Color(0xFFB82D41),
+                      radius: 22,
+                      child: Icon(Icons.send, color: Colors.white, size: 20),
                     ),
                   ),
                 ],
@@ -205,7 +236,7 @@ class _ChatPlantillaScreenState extends State<ChatPlantillaScreen> {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
     
-    _controller.clear(); // Limpiamos rápido para mejor sensación
+    _controller.clear(); 
     await vm.sendMessage(widget.chatId, text);
   }
 }

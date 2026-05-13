@@ -1,3 +1,4 @@
+import 'dart:io'; // Añadido para manejar el archivo de imagen
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
@@ -177,21 +178,55 @@ class AuthViewModel extends ChangeNotifier {
       rethrow;
     }
   }
-  
+
   // ============================
-// LOGOUT
-// ============================
-Future<void> logout() async {
-  try {
-    await _supabase.auth.signOut();
-    _currentUser = null;
+  // ACTUALIZAR AVATAR (Storage + DB)
+  // ============================
+  Future<void> updateAvatar(File imageFile) async {
+    _isLoading = true;
     notifyListeners();
-  } catch (e) {
-    print("Error al cerrar sesión: $e");
+
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) return;
+
+      final fileName = '${user.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+      // 1. Subir al Bucket 'avatars'
+      await _supabase.storage.from('avatars').upload(
+            fileName,
+            imageFile,
+            fileOptions: const FileOptions(upsert: true),
+          );
+
+      // 2. Obtener URL pública
+      final String publicUrl =
+          _supabase.storage.from('avatars').getPublicUrl(fileName);
+
+      // 3. Actualizar campo avatarUrl en la tabla de perfiles
+      await _userService.updateUserProfile(user.id, {'avatar_url': publicUrl});
+
+      // 4. Refrescar datos locales
+      await loadCurrentUser();
+    } catch (e) {
+      print("Error actualizando avatar: $e");
+      _errorMessage = "No se pudo actualizar la imagen";
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
-}
 
-
-
-
+  // ============================
+  // LOGOUT
+  // ============================
+  Future<void> logout() async {
+    try {
+      await _supabase.auth.signOut();
+      _currentUser = null;
+      notifyListeners();
+    } catch (e) {
+      print("Error al cerrar sesión: $e");
+    }
+  }
 }

@@ -17,6 +17,7 @@ dependencies:
 
   # Funcionalidades añadidas
   image_picker: ^1.0.7
+  image_cropper: ^8.0.0
 
   flutter_map: ^8.3.0
   latlong2: ^0.9.1

@@ -216,21 +216,32 @@ Future<void> toggleFavorite(String propertyId) async {
     }
   }
 
-  Future<bool> deleteProperty(String propertyId, String userId) async {
-    _setLoading(true);
-    _errorMessage = null;
+Future<bool> deleteProperty(String propertyId, String userId) async {
+  _setLoading(true);
+  _errorMessage = null;
 
-    try {
-      await _propertyService.deleteProperty(propertyId);
-      await fetchMyProperties(userId);
-      return true;
-    } catch (e) {
-      _errorMessage = "Error al eliminar: $e";
-      return false;
-    } finally {
-      _setLoading(false);
-    }
+  try {
+    // 1. Ejecutamos el borrado en el service
+    await _propertyService.deleteProperty(propertyId);
+    
+    // 2. Refrescamos la lista local de "Mis Alojamientos"
+    // Es importante pasar el userId para que el filtro siga funcionando
+    await fetchMyProperties(userId);
+    
+    // 3. Opcional: Si tienes una lista general de propiedades, 
+    // podrías querer quitarla de ahí también localmente
+    _allProperties.removeWhere((p) => p.id == propertyId);
+    
+    notifyListeners(); // Asegura que cualquier UI escuchando se entere
+    return true;
+  } catch (e) {
+    _errorMessage = "Error al eliminar: $e";
+    debugPrint("Error en deleteProperty: $e"); // Para que lo veas en consola
+    return false;
+  } finally {
+    _setLoading(false);
   }
+}
 
   Future<void> deleteImagesFromStorage(List<String> urls) async {
     try {

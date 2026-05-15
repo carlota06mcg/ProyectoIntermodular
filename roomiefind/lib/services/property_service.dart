@@ -121,10 +121,23 @@ Future<void> updateProperty(PropertyModel property, List<File> newImages) async 
   // ============================
 Future<void> deleteProperty(String propertyId) async {
   try {
-    // Aquí propertyId ya viene como String (no nulo) desde el ViewModel
-    await _supabase.from('properties').delete().eq('id', propertyId);
+    // Añadimos .select() para confirmar que el RLS permitió el borrado
+    final data = await _supabase
+        .from('properties')
+        .delete()
+        .eq('id', propertyId)
+        .select();
+
+    // Si data está vacío, es que el RLS bloqueó el borrado (no eras el dueño)
+    // o la propiedad ya no existía.
+    if (data.isEmpty) {
+      throw Exception("No se pudo eliminar: No tienes permisos o el alojamiento no existe.");
+    }
+  } on PostgrestException catch (e) {
+    // Capturamos errores específicos de la base de datos (como el de las FK que vimos)
+    throw Exception("Error de base de datos: ${e.message}");
   } catch (e) {
-    throw Exception("Error al eliminar la propiedad: $e");
+    throw Exception("Error inesperado al eliminar: $e");
   }
 }
 

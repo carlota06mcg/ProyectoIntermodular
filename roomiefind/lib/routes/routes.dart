@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:roomiefind/screens/mainScreen.dart';
-// Importa aquí tu barrel file (el archivo que contiene todos los exports)
+// Importaciones de tus barrel files
 import 'package:roomiefind/screens/Students/screen.dart'; 
 import 'package:roomiefind/screens/Owner/screen.dart'; 
 import 'package:roomiefind/screens/Shared/screen.dart'; 
@@ -12,7 +12,7 @@ class AppRoutes {
   static const String roleSelection = '/role_selection';
 
   // --- RUTAS PRINCIPALES (DASHBOARDS) ---
-  static const String mainMenu      = '/main_menu';    // Para Estudiantes
+  static const String mainMenu      = '/main_menu';      // Para Estudiantes
   static const String ownAppart     = '/own_appartment'; // Para Propietarios
 
   // --- FUNCIONALIDADES ESTUDIANTE ---
@@ -22,6 +22,7 @@ class AppRoutes {
 
   // --- FUNCIONALIDADES PROPIETARIO ---
   static const String createApart   = '/create_appartment';
+  static const String statsMenu     = '/stats_menu';     // Nueva ruta de estadísticas
 
   // --- CHAT ---
   static const String chatMenu      = '/chat_menu';
@@ -40,19 +41,19 @@ class AppRoutes {
 
       // Core Screens
       mainMenu: (context) => const MainWrapper(isOwner: false),
-      ownAppart:   (context) => const MainWrapper(isOwner: true), // Tu home de propietario
+      ownAppart:   (context) => const MainWrapper(isOwner: true), 
 
       // Student features
-      //search:        (context) => const Search(),
       favorites:     (context) => const FavoritesScreen(),
       history:       (context) => const HistoryScreen(),
 
       // Owner features
       createApart:   (context) => const FormularioAlojamientoScreen(),
+      statsMenu:     (context) => const OwnerStatsScreen(), // Vinculamos la nueva pantalla
 
       // Chat
       chatMenu:      (context) => const MenuChatsScreen(),
-      //chatDetail:    (context) => const ChatPlantillaScreen(),
+      // chatDetail: (context) => const ChatPlantillaScreen(), // Descomentar cuando sea necesario
 
       // Profile
       profile:       (context) => const ProfileScreen(),

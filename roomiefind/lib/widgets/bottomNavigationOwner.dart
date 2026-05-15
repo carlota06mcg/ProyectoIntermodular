@@ -27,9 +27,9 @@ class OwnerBottomNavBar extends StatelessWidget {
 
           _buildNavItem(Icons.send_outlined, 0, primaryColor, unselectedColor),
 
-          _buildNavItem(Icons.calendar_today_outlined, 1, primaryColor, unselectedColor),
+          _buildNavItem(Icons.graphic_eq_outlined, 1, primaryColor, unselectedColor),
 
-          _buildNavItem(Icons.add_home_outlined, 2, primaryColor, unselectedColor),
+          //_buildNavItem(Icons.add_home_outlined, 2, primaryColor, unselectedColor),
 
           _buildNavItem(Icons.home_outlined, 3, primaryColor, unselectedColor),
 

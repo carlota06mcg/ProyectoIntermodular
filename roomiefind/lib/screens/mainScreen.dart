@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:roomiefind/widgets/widgets.dart'; // Aquí deben estar tus NavBars
-import 'package:roomiefind/screens/screen.dart'; // Barrel file con todas las pantallas
+import 'package:roomiefind/widgets/widgets.dart'; 
+import 'package:roomiefind/screens/screen.dart'; // Usamos el barrel que ya tiene todo
 
 class MainWrapper extends StatefulWidget {
-  final bool isOwner; // Añadimos esta variable para distinguir el rol
+  final bool isOwner;
 
   const MainWrapper({super.key, this.isOwner = false});
 
@@ -16,41 +16,38 @@ class _MainWrapperState extends State<MainWrapper> {
 
   // 1. Páginas para ESTUDIANTES
   final List<Widget> _studentPages = [
-    const MainmenuScreen(),       // Index 0: Home/Busqueda
-    const MenuChatsScreen(),      // Index 1: Chats
-    const SearchScreen(),         // Index 2: Buscar
-    const HistoryScreen(),        // Index 3: Historial
-    const FavoritesScreen(),      // Index 4: Favoritos
-    const ProfileScreen(),  // Index 5: Perfil
+    const MainmenuScreen(),       
+    const MenuChatsScreen(),      
+    const SearchScreen(),         
+    const HistoryScreen(),        
+    const FavoritesScreen(),      
+    const ProfileScreen(),        
   ];
 
-  // 2. Páginas para PROPIETARIOS (Basado en la barra que hicimos antes)
+  // 2. Páginas para PROPIETARIOS
   final List<Widget> _ownerPages = [
-    const MenuChatsScreen(),        // Index 0: Mensajes
-    const HistoryScreen(),          // Index 1: Calendario/Reservas (o la que decidas)
-    const FormularioAlojamientoScreen(), // Index 2: Añadir Casa
-    const MisAlojamientosScreen(),    // Index 3: Mis Propiedades/Home
-    const ProfileScreen(),    // Index 4: Perfil
+    const MenuChatsScreen(),             // Index 0: Mensajes
+    const OwnerStatsScreen(),            // Index 1: ESTADÍSTICAS (Nombre de clase corregido)
+    const FormularioAlojamientoScreen(),  // Index 2: Añadir Casa
+    const MisAlojamientosScreen(),        // Index 3: Mis Propiedades
+    const ProfileScreen(),                // Index 4: Perfil
   ];
 
   @override
   Widget build(BuildContext context) {
-    // Seleccionamos la lista de páginas según el rol
     final pages = widget.isOwner ? _ownerPages : _studentPages;
 
     return Scaffold(
-      body: IndexedStack( // Usar IndexedStack mantiene el estado de las páginas al cambiar
+      body: IndexedStack( 
         index: _currentIndex,
         children: pages,
       ),
-      
-      // Cambiamos la barra según el rol
       bottomNavigationBar: widget.isOwner
-        ? OwnerBottomNavBar( // La que creamos al principio
+        ? OwnerBottomNavBar(
             currentIndex: _currentIndex,
             onTap: (index) => setState(() => _currentIndex = index),
           )
-        : CustomBottomNavBar( // La de estudiantes
+        : CustomBottomNavBar(
             currentIndex: _currentIndex,
             onTap: (index) => setState(() => _currentIndex = index),
           ),

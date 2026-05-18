@@ -151,6 +151,8 @@ Future<void> deleteProperty(String propertyId) async {
       'services': json['services'] ?? {},
       'additional_info': json['additional_info'] ?? {},
       'transport': json['transport']?.toString() ?? '', 
+      'latitude': json['latitude'],
+    'longitude': json['longitude']
     };
   }
 }

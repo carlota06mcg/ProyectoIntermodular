@@ -36,8 +36,8 @@ class AuthViewModel extends ChangeNotifier {
     }
   }
 
-  // ============================
-  // REGISTRO
+// ============================
+  // REGISTRO (CON DIAGNÓSTICO DE ERRORES)
   // ============================
   Future<bool> register({
     required String email,
@@ -50,6 +50,7 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // 1. Validar si el username existe
       final existeUsuario = await _authService.usernameExists(username);
       if (existeUsuario) {
         _errorMessage = "El nombre de usuario ya está en uso";
@@ -58,6 +59,7 @@ class AuthViewModel extends ChangeNotifier {
         return false;
       }
 
+      // 2. Intentar el registro en Supabase
       final res = await _authService.signUp(
         email: email,
         password: password,
@@ -65,22 +67,43 @@ class AuthViewModel extends ChangeNotifier {
         username: username,
       );
 
+      // Chivato en consola para ver qué devuelve Supabase exactamente
+      debugPrint("=== [AUTH DIAGNOSIS] ===");
+      debugPrint("User ID creado: ${res.user?.id}");
+      debugPrint("Confirmación de email pendiente: ${res.user?.confirmedAt == null ? 'SÍ' : 'NO'}");
+
       if (res.user == null) {
-        _errorMessage = "No se pudo crear el usuario";
+        _errorMessage = "No se pudo crear el usuario (Respuesta vacía)";
         _isLoading = false;
         notifyListeners();
         return false;
       }
 
-      // Cargar perfil recién creado
+      // 3. Cargar perfil recién creado
       await loadCurrentUser();
 
       _isLoading = false;
       notifyListeners();
       return true;
 
+    } on AuthException catch (e) {
+      // Errores específicos de Autenticación (Contraseña corta, email inválido, etc.)
+      _errorMessage = e.message;
+      debugPrint("❌ [Error Auth Supabase]: ${e.message} (Código: ${e.statusCode})");
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    } on PostgrestException catch (e) {
+      // Errores específicos de la base de datos (Fallo al insertar en la tabla 'profiles')
+      _errorMessage = "Error en base de datos: ${e.message}";
+      debugPrint("❌ [Error DB Supabase]: ${e.message} | Detalle: ${e.details}");
+      _isLoading = false;
+      notifyListeners();
+      return false;
     } catch (e) {
-      _errorMessage = "Error en el registro";
+      // Cualquier otro error inesperado
+      _errorMessage = "Error inesperado: $e";
+      debugPrint("❌ [Error Inesperado Registro]: $e");
       _isLoading = false;
       notifyListeners();
       return false;

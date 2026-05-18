@@ -68,9 +68,14 @@ class _FormularioAlojamientoScreenState extends State<FormularioAlojamientoScree
     _localidadController = TextEditingController(text: esEdicion ? p!.locality : '');
     _cpController = TextEditingController(text: esEdicion ? p!.zipCode : '');
     
-    if (esEdicion) {
+if (esEdicion) {
       _lat = p!.latitude;
       _lon = p!.longitude;
+    } else {
+      // Coordenadas por defecto (Ej: Centro de Granada) 
+      // Así el mapa siempre se renderiza y no arranca vacío
+      _lat = 37.177336; 
+      _lon = -3.598557;
     }
 
     if (esEdicion && p?.services != null) {
@@ -171,9 +176,9 @@ Future<void> _actualizarDireccionDesdeMapa(LatLng position) async {
     }
   });
 }
-  // --- WIDGET DEL MAPA INTERACTIVO ---
 
-  Widget _buildInteractiveMap() {
+// Widget que muestra el mapa interactivo con un pin fijo en el centro, y actualiza la dirección conforme se mueve el mapa
+Widget _buildInteractiveMap() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -182,48 +187,70 @@ Future<void> _actualizarDireccionDesdeMapa(LatLng position) async {
           child: Container(
             height: 220,
             width: double.infinity,
-            decoration: BoxDecoration(color: Colors.grey[200], border: Border.all(color: Colors.grey.shade300)),
-            child: _lat == null 
-              ? const Center(child: Text("Busca una dirección para activar el mapa", style: TextStyle(color: Colors.grey)))
-:FlutterMap(
-  mapController: _mapController,
-  options: MapOptions(
-    initialCenter: LatLng(_lat!, _lon!),
-    initialZoom: 17.0,
-    // CAMBIO AQUÍ: Usamos MapCamera en lugar de MapPosition
-    onPositionChanged: (MapCamera camera, bool hasGesture) {
-      if (hasGesture) {
-        // La cámara siempre tiene un centro válido (center)
-        _actualizarDireccionDesdeMapa(camera.center);
-      }
-    },
-  ),
-  children: [
-    TileLayer(
-      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-      userAgentPackageName: 'com.roomiefind.app',
-      tileDisplay: const TileDisplay.fadeIn(duration: Duration(milliseconds: 300)),
-    ),
-    MarkerLayer(
-      markers: [
-        Marker(
-          point: LatLng(_lat!, _lon!),
-          width: 45,
-          height: 45,
-          child: Icon(Icons.location_pin, color: primaryRed, size: 45),
-        ),
-      ],
-    ),
-  ],
-)
+            decoration: BoxDecoration(
+              color: Colors.grey[200], 
+              border: Border.all(color: Colors.grey.shade300)
+            ),
+            // Stack nos permite flotar elementos encima del mapa
+            child: Stack(
+              children: [
+                FlutterMap(
+                  mapController: _mapController,
+                  options: MapOptions(
+                    initialCenter: LatLng(_lat!, _lon!),
+                    initialZoom: 16.0,
+                    onPositionChanged: (MapCamera camera, bool hasGesture) {
+                      if (hasGesture) {
+                        // Captura las coordenadas del centro de la pantalla 
+                        // conforme el usuario arrastra el mapa
+                        _actualizarDireccionDesdeMapa(camera.center);
+                      }
+                    },
+                  ),
+                  children: [
+                    TileLayer(
+                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      userAgentPackageName: 'com.roomiefind.app',
+                      tileDisplay: const TileDisplay.fadeIn(duration: Duration(milliseconds: 300)),
+                    ),
+                  ],
+                ),
+                
+                // 📍 EL PIN FLOTANTE EN EL CENTRO EXACTO
+                // Se queda estático en medio del contenedor mientras el mapa se mueve por detrás
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 35), // Compensa la punta del pin
+                    child: Icon(
+                      Icons.location_pin, 
+                      color: primaryRed, 
+                      size: 45
+                    ),
+                  ),
+                ),
+                
+                // Indicador visual discreto si está haciendo geocodificación inversa
+                if (_isLocating)
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                      child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: primaryRed, strokeWidth: 2)),
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
-        if (_lat != null)
-          const Padding(
-            padding: EdgeInsets.only(top: 6, left: 4),
-            child: Text("📍 Arrastra el mapa para ajustar el pin sobre el portal.", 
-              style: TextStyle(fontSize: 11, color: Colors.blueGrey, fontStyle: FontStyle.italic)),
+        const Padding(
+          padding: EdgeInsets.only(top: 6, left: 4),
+          child: Text(
+            "📍 Mueve el mapa para que el pin apunte exactamente al portal.", 
+            style: TextStyle(fontSize: 11, color: Colors.blueGrey, fontStyle: FontStyle.italic)
           ),
+        ),
       ],
     );
   }

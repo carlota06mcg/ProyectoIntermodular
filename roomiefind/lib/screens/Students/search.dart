@@ -1,9 +1,11 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:http/http.dart' as http;
-
+import 'package:roomiefind/models/property_model.dart';
+import 'package:roomiefind/screens/Shared/Property/property_details.dart';
+import 'package:roomiefind/viewmodels/property_viewmodel.dart';
+import 'package:roomiefind/widgets/widgets.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({Key? key}) : super(key: key);
@@ -13,225 +15,225 @@ class SearchScreen extends StatefulWidget {
 }
 
 class _SearchScreenState extends State<SearchScreen> {
-  LatLng _center = const LatLng(37.18817, -3.60667);
-  final Color primaryRed = const Color(0xFFB82D41);
   final MapController _mapController = MapController();
-  final TextEditingController _searchController = TextEditingController();
-  bool _isLoading = false;
+  PropertyModel? _selectedProperty; 
+  
+  final Color primaryRed = const Color(0xFFB02A37);
+  final LatLng _defaultCenter = const LatLng(37.177336, -3.598557); 
 
   @override
-  void dispose() {
-    _mapController.dispose();
-    _searchController.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<PropertyViewModel>(context, listen: false).fetchProperties().then((_) {
+        _centrarMapaEnPropiedades();
+      });
+    });
   }
 
-  Future<void> _searchLocation(String query) async {
-    if (query.trim().isEmpty) return;
-    
-    // Ocultar teclado
-    FocusScope.of(context).unfocus();
+  void _centrarMapaEnPropiedades() {
+    final properties = Provider.of<PropertyViewModel>(context, listen: false).properties;
+    final validProperties = properties.where((p) => p.latitude != null && p.longitude != null).toList();
 
-    setState(() => _isLoading = true);
-    try {
-      final url = Uri.parse('https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(query)}&format=json&limit=1');
-      final response = await http.get(url);
+    if (validProperties.isNotEmpty) {
+      double totalLat = 0;
+      double totalLng = 0;
+      for (var p in validProperties) {
+        totalLat += p.latitude!;
+        totalLng += p.longitude!;
+      }
+      final double avgLat = totalLat / validProperties.length;
+      final double avgLng = totalLng / validProperties.length;
       
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data.isNotEmpty) {
-          final lat = double.parse(data[0]['lat'].toString());
-          final lon = double.parse(data[0]['lon'].toString());
-          final newPos = LatLng(lat, lon);
-          
-          setState(() {
-            _center = newPos;
-          });
-          _mapController.move(newPos, 15.0);
-        } else {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Ubicación no encontrada')),
-            );
-          }
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error al buscar la ubicación')),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      _mapController.move(LatLng(avgLat, avgLng), 14.0);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final propertyVM = context.watch<PropertyViewModel>();
+    final properties = propertyVM.properties;
+    final propertiesWithCoords = properties.where((p) => p.latitude != null && p.longitude != null).toList();
+
     return Scaffold(
       body: Stack(
         children: [
-          // 1. Mapa
+          // 1. EL MAPA BASE
           FlutterMap(
             mapController: _mapController,
-            options: MapOptions(initialCenter: _center, initialZoom: 15.5),
+            options: MapOptions(
+              initialCenter: _defaultCenter,
+              initialZoom: 14.0,
+              onTap: (_, __) {
+                setState(() => _selectedProperty = null);
+              },
+            ),
             children: [
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.example.roomiefind',
+                userAgentPackageName: 'com.roomiefind.app',
               ),
+              
+              // 2. CAPA DE MARCADORES PERSONALIZADOS (ESTILO AIRBNB)
               MarkerLayer(
-                markers: [
-                  Marker(
-                    point: _center,
-                    width: 40,
-                    height: 40,
-                    child: Icon(
-                      Icons.location_pin,
-                      color: primaryRed,
-                      size: 40,
+                markers: propertiesWithCoords.map((property) {
+                  final bool isSelected = _selectedProperty?.id == property.id;
+                  
+                  return Marker(
+                    point: LatLng(property.latitude!, property.longitude!),
+                    width: 75,
+                    height: 35,
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() => _selectedProperty = property);
+                        _mapController.move(LatLng(property.latitude!, property.longitude!), 15.0);
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        decoration: BoxDecoration(
+                          color: isSelected ? primaryRed : Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: const [
+                            BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))
+                          ],
+                          border: Border.all(
+                            color: isSelected ? Colors.white : primaryRed.withOpacity(0.5), 
+                            width: 1.5
+                          ),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          "${property.price.toInt()}€",
+                          style: TextStyle(
+                            color: isSelected ? Colors.white : Colors.black87,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  );
+                }).toList(),
               ),
             ],
           ),
 
-          // 2. Top: Search Bar + Filtros
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              padding: const EdgeInsets.only(
-                top: 50,
-                left: 16,
-                right: 16,
-                bottom: 12,
-              ),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.white,
-                    Colors.white.withOpacity(0.95),
-                    Colors.white.withOpacity(0.0),
-                  ],
-                  stops: const [0.65, 0.85, 1.0],
-                ),
-              ),
-              child: Column(
-                children: [
-                  // Search Bar
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(30),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _searchController,
-                            decoration: const InputDecoration(
-                              hintText: 'Buscar ubicación (ej. Granada)...',
-                              border: InputBorder.none,
-                              isDense: true,
-                              contentPadding: EdgeInsets.symmetric(vertical: 12),
-                            ),
-                            textInputAction: TextInputAction.search,
-                            onSubmitted: _searchLocation,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        if (_isLoading)
-                          SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: primaryRed,
-                            ),
-                          )
-                        else
-                          GestureDetector(
-                            onTap: () => _searchLocation(_searchController.text),
-                            child: Icon(Icons.search, color: primaryRed, size: 26),
-                          ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  // Filtros (sin resultados por ahora)
-                  Row(
-                    children: [
-                      _buildFilterChip('Filtro'),
-                      const SizedBox(width: 8),
-                      _buildFilterChip('Área de distancia'),
-                      const Spacer(),
-                      Text(
-                        '0 resultados',
-                        style: TextStyle(
-                          color: Colors.grey.shade700,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+          // 3. INDICADOR DE CARGA
+          if (propertyVM.isLoading)
+            Positioned(
+              top: 50,
+              left: MediaQuery.of(context).size.width * 0.45,
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                child: CircularProgressIndicator(color: primaryRed),
               ),
             ),
-          ),
+
+          // 4. TARJETA FLOTANTE INFERIOR
+          if (_selectedProperty != null)
+            Positioned(
+              bottom: 20,
+              left: 15,
+              right: 15,
+              child: _buildPreviewCard(_selectedProperty!),
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildFilterChip(String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: Colors.grey.shade300),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
+  Widget _buildPreviewCard(PropertyModel property) {
+    final String thumb = property.imageUrls.isNotEmpty ? property.imageUrls[0] : '';
+
+    return GestureDetector(
+      onTap: () {
+        // Redirección directa utilizando la clase de tu archivo de Shared
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PropertyDetailsScreen(property: property),
           ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 13, color: Colors.black87),
-          ),
-          const SizedBox(width: 4),
-          Icon(
-            Icons.keyboard_arrow_down,
-            size: 16,
-            color: Colors.grey.shade600,
-          ),
-        ],
+        );
+      },
+      child: Container(
+        height: 110,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: const [
+            BoxShadow(color: Colors.black12, blurRadius: 10, spreadRadius: 2, offset: Offset(0, 3))
+          ],
+        ),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: const BorderRadius.only(topLeft: Radius.circular(16), bottomLeft: Radius.circular(16)),
+              child: SizedBox(
+                width: 110,
+                height: 110,
+                child: CustomPropertyImage(url: thumb),
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          property.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                        ),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            const Icon(Icons.location_on_outlined, size: 13, color: Colors.grey),
+                            const SizedBox(width: 2),
+                            Expanded(
+                              child: Text(
+                                "${property.locality}, ${property.city}",
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(color: Colors.grey, fontSize: 12),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "${property.price.toInt()}€/mes",
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: primaryRed),
+                        ),
+                        Row(
+                          children: [
+                            if (property.services['transporte_bus'] == true)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 4),
+                                child: Icon(Icons.directions_bus_outlined, size: 16, color: Colors.grey[700]),
+                              ),
+                            if (property.services['transporte_tren'] == true)
+                              Icon(Icons.train_outlined, size: 16, color: Colors.grey[700]),
+                          ],
+                        )
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:roomiefind/models/property_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../services/property_service.dart';
 
 class PropertyViewModel extends ChangeNotifier {

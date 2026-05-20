@@ -9,6 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_launcher_icons: ^0.13.1
   cupertino_icons: ^1.0.8
   
   # Lógica y Base de Datos
@@ -33,3 +34,9 @@ flutter:
   uses-material-design: true
   assets:
     - lib/photos/Logo.png
+    
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/images/icono_app.png"
+  min_sdk_android: 21
